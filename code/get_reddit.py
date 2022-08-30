@@ -32,7 +32,7 @@ def main():
     #lookup = lookup.loc[start_year:,]
 
     # Scrape subreddit
-    subreddit = 'politics'
+    subreddit = 'usa'
     dfs = []
     post_filter_list = ['id', 'selftext', 'title', 'author', 'created_utc', 'num_comments', 'score', 'brand_safe', 'over_18', 'domain', 'url', 'permalink']
     comment_filter_list = ['id', 'parent_id', 'body', 'author', 'created_utc', 'score', 'permalink']
@@ -43,7 +43,7 @@ def main():
         #posts = [post.d_ for post in api.search_submissions(
         #        subreddit=subreddit, after=row.begin, before=row.end, filter=post_filter_list, limit=int(row.post_count*.7))]
         comments = [comment.d_ for comment in api.search_comments(
-                subreddit=subreddit, after=row.begin, before=row.end, filter=comment_filter_list, limit=int(row.post_count*1.2))]
+                subreddit=subreddit, after=row.begin, before=row.end, filter=comment_filter_list, limit=int(row.post_count*.5))]
         # Remove deleted posts
         #if len(posts) == 0 and len(comments) == 0:
         if len(comments) == 0:
@@ -66,8 +66,8 @@ def main():
         dfs.append(df)
 
         # Save out for incremental results
-        outpath = f'../tmp/{index}_{subreddit}_subreddit_comments.csv'
-        df.to_csv(outpath)
+        outpath = f'../tmp/{index}_{subreddit}_subreddit_comments.pkl'
+        df.to_pickle(outpath)
 
     print('Finished, saving full dataset out')
     data = pd.concat(dfs).reset_index(drop=True)
