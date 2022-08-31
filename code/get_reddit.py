@@ -32,7 +32,7 @@ def main():
     #lookup = lookup.loc[start_year:,]
 
     # Scrape subreddit
-    subreddit = 'usa'
+    subreddit = 'AskAnAmerican'
     dfs = []
     post_filter_list = ['id', 'selftext', 'title', 'author', 'created_utc', 'num_comments', 'score', 'brand_safe', 'over_18', 'domain', 'url', 'permalink']
     comment_filter_list = ['id', 'parent_id', 'body', 'author', 'created_utc', 'score', 'permalink']
