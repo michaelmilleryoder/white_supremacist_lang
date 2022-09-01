@@ -5,6 +5,7 @@
 
 import os
 import json
+import re
 import tweepy
 import pandas as pd
 import datetime
@@ -14,6 +15,8 @@ from collections import Counter
 import random
 from datetime import datetime
 from tqdm import tqdm
+import pdb
+import time
 
 
 def main():
@@ -35,20 +38,20 @@ def main():
     # ## Sample query words from white supremacist tweet data 
     # To get tweets that share terms but aren't likely white supremacist
     random.seed(9)
-    stopwords = nltk.corpus.stopwords.words('english') + list(string.punctuation) + ['...', '…', '’', ';-)', 'rt', '<url>', '“', '”', "n't", 'new', 'report', 'border'] 
+    stopwords = nltk.corpus.stopwords.words('english') + list(string.punctuation) + ['...', '…', '’', ';-)', 'rt', '<url>', '“', '”', "n't", 'new', 'report', 'border', 'via', '—', '):', '°', '‘'] 
     slurs_fpath = '/storage2/mamille3/data/hate_speech/hatebase_slurs.txt'
     with open(slurs_fpath) as f:
         slurs = f.read().splitlines() + ['mudshark', 'illegals', 'anti-white']
     def check_word(word):
         """ See if word is ok to be a query """
-        return not (word in stopwords or word in slurs or word.startswith('#') or word.startswith('http') or word.startswith('http') or '.' in word)
+        return re.search('[a-zA-Z]', word) and not (word in stopwords or word in slurs or word.startswith('#') or word.startswith('http') or word.startswith('http') or '.' in word)
 
     words_by_year = ws_data.query('domain=="tweet/short propaganda"').groupby(by=ws_data.timestamp.dt.year).agg(
         {'text': lambda x: {w: count for w, count in Counter([w for w in ' '.join(x).split() if check_word(w)]).items() if count > 1}})
     words_by_year['text'] = words_by_year
 
     lookup['total_words'] = words_by_year
-    lookup['sampled_words'] = [Counter(random.choices(list(ctr.keys()), weights=list(ctr.values()), k=int(n/3))).most_common() for ctr, n in zip(lookup.total_words, lookup.post_count)]
+    lookup['sampled_words'] = [Counter(random.choices(list(ctr.keys()), weights=list(ctr.values()), k=int(n/10))).most_common() for ctr, n in zip(lookup.total_words, lookup.post_count)]
     lookup.drop(columns='total_words', inplace=True)
 
     print("Getting tweets from queries...")
@@ -60,18 +63,31 @@ def main():
     tweet_fields = [
         'id', 'created_at', 'text', 'author_id', 'conversation_id', 'entities', 'public_metrics', 'geo', 'lang', 'referenced_tweets'
     ]
-    place_fields = [
-        'full_name', 'id', 'contained_within'
-    ]
+    #place_fields = [
+    #    'full_name', 'id', 'contained_within'
+    #]
 
-    for i, row in tqdm(lookup.iterrows(), total=len(lookup)):
+    start_year = 2017
+    lookup = lookup.loc[start_year:]
+
+    for i, row in lookup.iterrows():
+        tqdm.write(str(i))
         fetched = []
-        for word, count in row.sampled_words:
+        n_queries = len(row.sampled_words)
+        #for j, (word, count) in enumerate(tqdm(row.sampled_words, total=n_queries, ncols=80):
+        for j, (word, count) in enumerate(tqdm(row.sampled_words, ncols=80)):
             try:
-                fetched.append(client.search_all_tweets(word, expansions='geo.place_id', place_fields=place_fields, tweet_fields=tweet_fields, start_time=row.begin, end_time=row.end, max_results=count*3))
+                fetched.append(client.search_all_tweets(
+                        word, 
+                        tweet_fields=tweet_fields, 
+                        start_time=row.begin, 
+                        end_time=row.end, 
+                        max_results=count*10))
             except tweepy.BadRequest as e:
-                tqdm.write(e)
+                tqdm.write(str(e))
                 tqdm.write(f'Bad request: {word}')
+            time.sleep(1)
+            #tqdm.write(f'{j} requests done')
         tweets = [tweet.data for response in fetched for tweet in response.data]
 
         # Save out tweet data
