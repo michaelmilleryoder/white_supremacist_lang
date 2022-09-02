@@ -1,0 +1,17 @@
+---
+corpora:
+  train:
+    name: white_supremacist
+    datasets:
+      qian2018:
+        - ../data/qian2018/data.jsonl
+      elsherief2021:
+        - ../data/elsherief2021/data.jsonl
+        - ../data/elsherief2021/users.jsonl
+
+#classifier:
+#  name: 'bert'
+#  settings:
+#    n_gpus: 1
+#    gpu_ids: [1] # list of ids or 'all'
+

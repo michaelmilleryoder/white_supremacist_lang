@@ -69,8 +69,8 @@ def main():
     #    'full_name', 'id', 'contained_within'
     #]
 
-    #start_year = 2022
-    #lookup = lookup.loc[start_year:]
+    start_year = 2016
+    lookup = lookup.loc[start_year:]
 
     for i, row in lookup.iterrows():
         tqdm.write(str(i))
@@ -79,18 +79,18 @@ def main():
         #for j, (word, count) in enumerate(tqdm(row.sampled_words, total=n_queries, ncols=80):
         for j, (word, count) in enumerate(tqdm(row.sampled_words, ncols=80)):
             try:
-                fetched.append(client.search_all_tweets(
+                response = client.search_all_tweets(
                         word + ' lang:en', 
                         tweet_fields=tweet_fields, 
                         start_time=row.begin, 
                         end_time=row.end, 
-                        max_results=count*10))
+                        max_results=count*10)
             except tweepy.BadRequest as e:
                 tqdm.write(str(e))
                 tqdm.write(f'Bad request: {word}')
             time.sleep(1)
             #tqdm.write(f'{j} requests done')
-        tweets = [tweet.data for response in fetched for tweet in response.data]
+        tweets = [tweet.data for response in fetched for tweet in response.data if response.data is not None]
 
         # Save out tweet data
         out_dirpath = '../data/neutral/twitter'
