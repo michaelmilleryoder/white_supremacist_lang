@@ -30,7 +30,7 @@ def main():
     yearly = ws_data.query('domain=="tweet/short propaganda"').groupby(by=ws_data.timestamp.dt.year)['text'].count()
     lookup = pd.DataFrame(yearly)
     lookup['begin'] = pd.to_datetime(yearly.index.astype(int).astype(str), format='%Y')
-    lookup['end'] = [x.replace(year=x.year + 1) for x in lookup['begin']]
+    lookup['end'] = [min(x.replace(year=x.year + 1), datetime.now()) for x in lookup['begin']]
     lookup.index.name = 'year'
     lookup.index = lookup.index.astype(int)
     lookup.rename(columns={'text': 'post_count'}, inplace=True)
@@ -38,10 +38,12 @@ def main():
     # ## Sample query words from white supremacist tweet data 
     # To get tweets that share terms but aren't likely white supremacist
     random.seed(9)
-    stopwords = nltk.corpus.stopwords.words('english') + list(string.punctuation) + ['...', '…', '’', ';-)', 'rt', '<url>', '“', '”', "n't", 'new', 'report', 'border', 'via', '—', '):', '°', '‘'] 
+    stopwords = nltk.corpus.stopwords.words('english') + list(string.punctuation) + ['...', '…', '’', ';-)', 'rt', '<url>', '“', '”', "n't", 'new', 'report', 'border', 'via', '—', '):', '°', '‘', "'re"] 
     slurs_fpath = '/storage2/mamille3/data/hate_speech/hatebase_slurs.txt'
     with open(slurs_fpath) as f:
-        slurs = f.read().splitlines() + ['mudshark', 'illegals', 'anti-white']
+        slurs = f.read().splitlines()
+        slurs += [term + 's' for term in slurs]
+        slurs +=  ['mudshark', 'illegals', 'anti-white']
     def check_word(word):
         """ See if word is ok to be a query """
         return re.search('[a-zA-Z]', word) and not (word in stopwords or word in slurs or word.startswith('#') or word.startswith('http') or word.startswith('http') or '.' in word)
@@ -67,8 +69,8 @@ def main():
     #    'full_name', 'id', 'contained_within'
     #]
 
-    start_year = 2017
-    lookup = lookup.loc[start_year:]
+    #start_year = 2022
+    #lookup = lookup.loc[start_year:]
 
     for i, row in lookup.iterrows():
         tqdm.write(str(i))
@@ -78,7 +80,7 @@ def main():
         for j, (word, count) in enumerate(tqdm(row.sampled_words, ncols=80)):
             try:
                 fetched.append(client.search_all_tweets(
-                        word, 
+                        word + ' lang:en', 
                         tweet_fields=tweet_fields, 
                         start_time=row.begin, 
                         end_time=row.end, 
