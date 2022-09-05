@@ -2,12 +2,44 @@
 corpora:
   train:
     name: white_supremacist
-    datasets:
-      qian2018:
-        - ../data/qian2018/data.jsonl
-      elsherief2021:
-        - ../data/elsherief2021/data.jsonl
-        - ../data/elsherief2021/users.jsonl
+    create: True
+    datasets: 
+      - name: qian2018
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/qian2018/data.jsonl
+      - name: elsherief2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/elsherief2021/data.jsonl
+          - ../data/elsherief2021/users.jsonl
+          - ../data/qian2018/users.jsonl
+          - /storage2/mamille3/data/hate_speech/elsherief2021/implicit_hate_v1_stg2_posts.tsv
+      - name: patriotfront
+        source: discord
+        domain: chat
+        load_paths:
+          - /storage2/mamille3/data/patriotfront/2017-Vanguard_America-Patriot_Front/Discord/dump
+          - /storage2/mamille3/data/patriotfront/2018/Discord/dump_Front_And_Center
+          - /storage2/mamille3/data/patriotfront/2018/Discord/dump_MI_Goy_Scouts_Official
+          - ../resources/us_first_names_1990.csv
+      - name: ironmarch
+        source: ironmarch
+        domain: forum
+        load_paths:
+          - ../data/iron_march_201911/csv/core_search_index.csv'
+      - name: stormfront
+        source: stormfront
+        domain: forum
+        load_paths:
+          - ../stormfront_archive/processed
+      - name: jokubausaite2020
+        source: 4chan
+        domain: forum
+        load_paths:
+          - /storage2/mamille3/data/4chan/jokubausaite2020/
 
 #classifier:
 #  name: 'bert'

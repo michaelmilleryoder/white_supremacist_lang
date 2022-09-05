@@ -10,6 +10,7 @@ import pdb
 import pandas as pd
 
 from corpus import Corpus
+#from bert_classifier import BertClassifier
 
 
 def main():
@@ -23,36 +24,15 @@ def main():
         config = yaml.safe_load(f)
 
     # Consruct or load corpora
-    corpora = {key: Corpus(**opts).load() for key, opts in config['corpora']}
+    print('Constructing or loading corpora...')
+    corpora = {key: Corpus(**opts).load() for key, opts in config['corpora'].items()}
+    #corpora = {}
+    #for role, info in config['corpora'].items():
+    #    corpora[role] = Corpus(**info).load()
 
-
-
-
-
-
-    datasets = [Dataset(name, load_paths=opts) for name, opts in config['datasets'].items()]
-    if config['load_datasets']:
-        print("Loading datasets...")
-        loader = DatasetsLoader(datasets)
-        loader.load_datasets(reprocess=config['reprocess_datasets'])
-
-    # Run with-heg/no-heg comparison
-    if config['heg_comparison']['run']:
-        heg_comparison = HegComparison(datasets, 
-            create_splits=config['heg_comparison']['create_splits'], 
-            hate_ratio=config['hate_ratio'],
-            cv_runs=config['heg_comparison']['cv_runs'],
-        )
-        heg_comparison.run(config['classifier']['name'], config['classifier']['settings'])
-
-    # Run identity split PCA
-    if config['pca']['run']:
-        identity_pca = IdentityPCA(datasets, config['classifier']['name'], config['classifier']['settings'],
-            create_datasets=config['pca']['create_identity_datasets'], 
-            hate_ratio=config['hate_ratio'], 
-            combine=config['pca']['combine_datasets'],
-            incremental=config['pca']['incremental'])
-        identity_pca.run()
+    # Train and evaluate classifier
+    #clf = BertClassifier() # put in config options
+    #clf.run()
 
 
 if __name__ == '__main__':
