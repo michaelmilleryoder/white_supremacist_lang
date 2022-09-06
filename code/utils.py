@@ -28,6 +28,16 @@ def remove_urls(text, urls):
     return new_text
 
 
+def process_tweet(text, user_mentions, urls, tokenizer):
+    new_text = text
+    if isinstance(user_mentions, list):
+        new_text = remove_mentions(new_text, user_mentions)
+    if isinstance(urls, list):
+        new_text = remove_urls(new_text, urls)
+    new_text = ' '.join(tokenizer.tokenize(new_text))
+    return new_text.lower()
+
+
 def tokenize_lowercase(inp):
     """ Tokenize and lowercase text """
     return ' '.join(nltk.word_tokenize(str(inp))).lower()
@@ -43,16 +53,19 @@ class MLStripper(HTMLParser):
     def get_data(self):
         return ' '.join(self.fed)
 
+
 def strip_tags(html):
     s = MLStripper()
     s.feed(html)
     return s.get_data()
+
 
 def remove_special(text):
     text = text.replace('>', '')
     text = re.sub(r'\d{7,}', '', text)
     text = re.sub(r'\S+(?:\.com|\.org|\.edu)\S*|https?:\/\/\S*', '', text) # Remove URLs
     return text
+
 
 def process_4chan(text):
     """ Preprocess 4chan data """
@@ -63,4 +76,9 @@ def process_4chan(text):
     text = remove_special(text)
     # Tokenize
     text = ' '.join(nltk.word_tokenize(str(text))).lower()
+    return text
+
+
+def process_article(inp):
+    text = ' '.join(nltk.word_tokenize(str(inp.replace('.', '. ')))).lower()
     return text

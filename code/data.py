@@ -6,22 +6,31 @@ import os
 import json
 import re
 import pdb
+from multiprocessing import Pool
 
 import pandas as pd
 import nltk
 from nltk.tokenize import TweetTokenizer
 from tqdm import tqdm
 
-from utils import remove_mentions, remove_urls, tokenize_lowercase, process_4chan
+from utils import remove_mentions, remove_urls, tokenize_lowercase, process_4chan, process_tweet, process_article
 
 
 class Dataset:
     """ Superclass for storing data and attributes of datasets """
 
+    #@classmethod
+    #def all_subclasses(cls):
+    #    """ Return all subclasses of the class, as deep as they go (recursive) """
+    #    return set(cls.__subclasses__()).union(
+    #        [s for c in cls.__subclasses__() for s in all_subclasses(c)])
+
     def __new__(cls, name, source, domain, load_paths):
-        """ Choose the right subclass based on name """
+        """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
         subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
+        #subclass_map = {subclass.__name__: subclass for subclass in all_subclasses(cls)}
+        #subclass = subclass_map.get(subclass_name.split('_')[0], cls)
         subclass = subclass_map.get(subclass_name, cls)
         instance = super(Dataset, subclass).__new__(subclass)
         return instance
@@ -42,7 +51,7 @@ class Dataset:
         self.data = pd.DataFrame()
         #cls.get_subclass()
 
-    def uniform_format(self, timestamp_col=None, unit=None, errors='raise'):
+    def uniform_format(self, timestamp_col=None, unit=None, errors='raise', format=None):
         """ Format the dataframe for combining with other datasets
             Set a column to a timestamp data type if there is one
             Create an index for the dataset with the dataset name.
@@ -51,10 +60,11 @@ class Dataset:
             Args:
                 timestamp_col: the name of a column to convert to a datetime data type. If None, no timestamp
                 unit: Additional parameter to pass to pd.to_datetime
+                format: Additional parameter to pass to pd.to_datetime
         """
 
         if timestamp_col is not None:
-            self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], utc=True, unit=unit, errors=errors)
+            self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
         self.data['id'] = self.name + '_' + self.data.index.astype(str)
         self.data.set_index('id', inplace=True)
         self.data['dataset'] = self.name
@@ -67,7 +77,7 @@ class Dataset:
 
     def load(self):
         """ Needs to be overridden in a subclass """
-        self.data = pd.read_csv(self.load_fpaths[0])
+        self.data = pd.read_csv(self.load_paths[0])
 
     def process(self):
         """ Needs to be overridden in a subclass """
@@ -75,16 +85,6 @@ class Dataset:
 
 
 class Qian2018Dataset(Dataset):
-
-    @staticmethod
-    def process_text(text, user_mentions, urls, tokenizer):
-        new_text = text
-        if isinstance(user_mentions, list):
-            new_text = remove_mentions(new_text, user_mentions)
-        if isinstance(urls, list):
-            new_text = remove_urls(new_text, urls)
-        new_text = ' '.join(tokenizer.tokenize(new_text))
-        return new_text.lower()
 
     def load(self):
         """ Load tweets """
@@ -95,7 +95,7 @@ class Qian2018Dataset(Dataset):
         """ Process data into a format to combine with other datasets """
         # Tokenize, anonymize texts
         tokenizer = TweetTokenizer(strip_handles=True)
-        self.data['processed_text'] = [self.process_text(
+        self.data['processed_text'] = [process_tweet(
                 text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
                 self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), total=len(self.data), ncols=80)]
         self.data.drop(columns='text', inplace=True)
@@ -143,7 +143,7 @@ class Elsherief2021Dataset(Dataset):
     def process(self):
         """ Process data into a format to combine with other datasets """
         tokenizer = TweetTokenizer(strip_handles=True)
-        self.data['processed_text'] = [Qian2018Dataset.process_text(
+        self.data['processed_text'] = [process_tweet(
                 text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
                 self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), total=len(self.data), ncols=80)]
         self.data.drop(columns='text', inplace=True)
@@ -175,13 +175,13 @@ class PatriotfrontDataset(Dataset):
         # Remove spencer, guy (for Richard Spencer)
         common_names -= {'spencer', 'guy'}
         self.data['processed'] = self.data['message'].map(lambda x: ' '.join([wd for wd in nltk.word_tokenize(str(x)) if wd not in common_names]).lower())
-        self.data.rename(columns={'processed': 'text', inplace=True)
+        self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='timestamp')
 
 
 class IronmarchDataset(Dataset):
 
-    def process():
+    def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
             self.data['processed'] = list(tqdm(p.imap(tokenize_lowercase, self.data['index_content']), total=len(self.data)))
@@ -192,18 +192,18 @@ class IronmarchDataset(Dataset):
 
 class StormfrontDataset(Dataset):
 
-    @staticmethod
-    def preprocess(inp):
+    @classmethod
+    def preprocess(cls, inp):
         text = re.sub(r'Quote:\n\n\n\n\nOriginally Posted by .*\n\n\n', '', inp) # Remove quote tag
         text = re.sub(r'\S+(?:\.com|\.org|\.edu)\S*|https?:\/\/\S*', '', text) # Remove URLs
         text = ' '.join(nltk.word_tokenize(str(text))).lower()
         return text
 
-    def load():
+    def load(self):
         """ Load data dump """
         dfs = []
         for fname in tqdm(os.listdir(self.load_paths[0]), ncols=80):
-            fpath = os.path.join(dirpath, fname)
+            fpath = os.path.join(self.load_paths[0], fname)
             dfs.append(pd.read_csv(fpath))
         self.data = pd.concat(dfs).reset_index(drop=True) 
 
@@ -228,10 +228,10 @@ class StormfrontDataset(Dataset):
         formatted = [f'Stormfront {el}' for el in exclude]
         self.data = self.data.query('breadcrumb2!=@formatted').dropna(subset='text')
 
-    def process():
+    def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(preprocess, self.data['text']), total=len(self.data)))
+            self.data['processed'] = list(tqdm(p.imap(self.preprocess, self.data['text']), total=len(self.data)))
         self.data.drop(columns='text', inplace=True)
         self.data.reset_index(drop=True, inplace=True)
         self.data.rename(columns={'processed': 'text'})
@@ -240,7 +240,7 @@ class StormfrontDataset(Dataset):
 
 class Jokubausaite2020Dataset(Dataset):
 
-    def load():
+    def load(self):
         """ Load dataset, select certain threads """
         selected = [
             # 'president trump', # too focused just on Trump
@@ -267,9 +267,90 @@ class Jokubausaite2020Dataset(Dataset):
 
         self.data = pd.concat(dfs).reset_index(drop=True)
 
-    def process():
+    def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
             self.data['processed'] = list(tqdm(p.imap(process_4chan, self.data.body), total=len(self.data), ncols=80))
         self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='timestamp')
+
+
+class Papasavva2020Dataset(Dataset):
+
+    def load(self):
+        """ Load dataset """
+        self.data = pd.read_csv(self.load_paths[0],index_col=0).reset_index(drop=True)
+
+    def process(self):
+        """ Process data into a format to combine with other datasets """
+        self.data.drop(columns='id').rename(columns={'no': 'id', 'com': 'body'})
+        with Pool(self.n_jobs) as p:
+            self.data['processed'] = list(tqdm(p.imap(process_4chan, self.data.body), total=len(self.data), ncols=80))
+        self.data.rename(columns={'processed': 'text'}, inplace=True)
+        self.uniform_format(timestamp_col='time', unit='s')
+
+        # Remove duplicates with jokubausaite2020
+        # Don't like loading it again, but easiest way for now since no way to access other unprocessed dataset
+        selected = [
+            'kraut/pol/ and afd',
+            'national socialism',
+            'fascism',
+            'dixie',
+            'kraut/pol/', # yep, German nationalists. Some German, but lots of white supremacy
+            'ethnostate',
+            'white',
+            'chimpout',
+            'feminist apocalypse',
+            '(((krautgate)))',
+        ]
+        dfs = []
+        for general in selected:
+            fpath = os.path.join(self.load_paths[1], f'{general.replace("/", " ")} general.csv')
+            dfs.append(pd.read_csv(fpath))
+        jokubausaite2020_ids = pd.concat(dfs).reset_index(drop=True)['id']
+
+        pdb.set_trace() # TODO: Check that some overlap is removed
+        self.data = self.data[~self.data.id.isin(jokubausaite2020_ids)]
+
+
+class Calderon2021(Dataset):
+
+    def load(self):
+        """ Load data dump """
+        with open(self.load_paths[0]) as f:
+            self.data = pd.json_normalize(json.load(f))
+
+    def process(self):
+        """ Process data into a format to combine with other datasets """
+        with Pool(self.n_jobs) as p:
+            self.data['text'] = list(tqdm(p.imap(
+                    process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data)))
+        # remove date errors. Could extract real date by parsing text
+        self.data.loc[~self.data.date.str.startswith('20'), 'date'] = '' 
+        self.data = self.data.drop(columns=['author_wording', 'title'])
+        self.uniform_format(timestamp_col='date', errors='coerce')
+
+
+class Pruden2022(Dataset):
+    source_years = {
+            'breivik_manifesto': 2011,
+            'powell_rivers_of_blood_speech': 1968,
+            'raspail_camp_of_the_saints_book': 1973,
+            'lane_white_genocide_manifesto': 1988,
+            'camus_the_great_replacement_book': 2012,
+            'pierce_the_turner_diaries_book': 1978,
+            }
+
+    def load(self):
+        """ Load document """
+        with open(self.load_paths[0], encoding='latin-1') as f:
+            if self.source == 'breivik_manifesto':
+                text = [line.strip() for line in re.split(r'\n\s+', f.read()) if len(line.strip()) > 0]
+            else:
+                text = [line.strip() for line in f.read().splitlines() if len(line.strip()) > 0]
+        self.data = pd.DataFrame({'orig_text': text, 'year': self.source_years[self.source]})
+
+    def process(self): 
+        """ Process data into a format to combine with other datasets """
+        self.data['processed'] = list(map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data))))
+        self.uniform_format(timestamp_col='year', format='%Y')

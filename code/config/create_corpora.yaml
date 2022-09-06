@@ -3,7 +3,7 @@ corpora:
   train:
     name: white_supremacist
     create: True
-    datasets: 
+    datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
         domain: tweet
@@ -40,6 +40,47 @@ corpora:
         domain: forum
         load_paths:
           - /storage2/mamille3/data/4chan/jokubausaite2020/
+      - name: papasavva2020
+        source: 4chan
+        domain: forum
+        load_paths:
+          - ../data/papasavva2020_white_supremacist_flag_posts.csv
+          - /storage2/mamille3/data/4chan/jokubausaite2020/
+      - name: calderon2021
+        source: daily_stormer
+        domain: long-form
+        load_paths:
+          - ../data/calderon2021/d_stormer_documents.json
+      - name: calderon2021
+        source: american_renaissance
+        domain: long-form
+        load_paths:
+          - ../data/calderon2021/amran_documents.json
+      - name: pruden2022
+        source: breivik_manifesto
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/AndersBehringBreivikManifesto.txt
+      - name: pruden2022
+        source: enoch_powell_rivers_of_blood_speech
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/Enoch-Powells-Rivers-of-Blood-new-analysis-pdf.txt
+      - name: pruden2022
+        source: raspail_camp_of_the_sants_book
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/Jean-Raspail-Camp-of-the-Saints.txt
+      - name: pruden2022
+        source: lane_white_genocide_manifesto
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/Lane_White Genocide Manifesto.txt
+      - name: pruden2022
+        source: camus_the_great_replacement_book
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt
 
 #classifier:
 #  name: 'bert'
