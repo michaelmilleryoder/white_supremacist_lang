@@ -1,8 +1,8 @@
 ---
+# Define which datasets are in which corpora
 corpora:
-  train:
-    name: white_supremacist
-    create: True
+  - name: white_supremacist
+    create: False
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -29,12 +29,12 @@ corpora:
         source: ironmarch
         domain: forum
         load_paths:
-          - ../data/iron_march_201911/csv/core_search_index.csv'
+          - ../data/iron_march_201911/csv/core_search_index.csv
       - name: stormfront
         source: stormfront
         domain: forum
         load_paths:
-          - ../stormfront_archive/processed
+          - ../data/stormfront_archive/processed
       - name: jokubausaite2020
         source: 4chan
         domain: forum
@@ -62,25 +62,31 @@ corpora:
         load_paths:
           - ../data/pruden2022/AndersBehringBreivikManifesto.txt
       - name: pruden2022
-        source: enoch_powell_rivers_of_blood_speech
+        source: powell_rivers_of_blood_speech
         domain: long-form
         load_paths:
-          - ../data/pruden2022/Enoch-Powells-Rivers-of-Blood-new-analysis-pdf.txt
+          - '../data/pruden2022/Enoch-Powells-Rivers-of-Blood-new-analysis-pdf.txt'
       - name: pruden2022
-        source: raspail_camp_of_the_sants_book
+        source: raspail_camp_of_the_saints_book
         domain: long-form
         load_paths:
-          - ../data/pruden2022/Jean-Raspail-Camp-of-the-Saints.txt
+          - '../data/pruden2022/Jean-Raspail-Camp-of-the-Saints.txt'
       - name: pruden2022
         source: lane_white_genocide_manifesto
         domain: long-form
         load_paths:
-          - ../data/pruden2022/Lane_White Genocide Manifesto.txt
+          - '../data/pruden2022/Lane_White Genocide Manifesto.txt'
       - name: pruden2022
         source: camus_the_great_replacement_book
         domain: long-form
         load_paths:
-          - ../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt
+          - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
+  - name: neutral
+    create: True
+    datasets:
+      - name: reddit_match
+        source: reddit
+        domain: forum
 
 #classifier:
 #  name: 'bert'
@@ -88,3 +94,4 @@ corpora:
 #    n_gpus: 1
 #    gpu_ids: [1] # list of ids or 'all'
 
+# experiments: # define experiments where train particular classifiers on particular sets of training and testing corpora

@@ -55,7 +55,7 @@ class Dataset:
         """ Format the dataframe for combining with other datasets
             Set a column to a timestamp data type if there is one
             Create an index for the dataset with the dataset name.
-            Add a column of the dataset name
+            Add a column of the dataset name, source and domain.
             Filter self.data to just the columns needed from all datasets:
             Args:
                 timestamp_col: the name of a column to convert to a datetime data type. If None, no timestamp
@@ -71,9 +71,9 @@ class Dataset:
         self.data['source'] = self.source
         self.data['domain'] = self.domain
         if 'timestamp' in self.data.columns:
-            self.data = self.data[['text', 'timestamp', 'dataset', 'source']]
+            self.data = self.data[['text', 'timestamp', 'dataset', 'source', 'domain']]
         else:
-            self.data = self.data[['text', 'dataset', 'source']]
+            self.data = self.data[['text', 'dataset', 'source', 'domain']]
 
     def load(self):
         """ Needs to be overridden in a subclass """
@@ -184,7 +184,8 @@ class IronmarchDataset(Dataset):
     def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(tokenize_lowercase, self.data['index_content']), total=len(self.data)))
+            self.data['processed'] = list(tqdm(p.imap(
+                    tokenize_lowercase, self.data['index_content']), total=len(self.data), ncols=80))
         self.data.reset_index(drop=True, inplace=True)
         self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='index_date_created', unit='s')
@@ -202,7 +203,7 @@ class StormfrontDataset(Dataset):
     def load(self):
         """ Load data dump """
         dfs = []
-        for fname in tqdm(os.listdir(self.load_paths[0]), ncols=80):
+        for fname in os.listdir(self.load_paths[0]):
             fpath = os.path.join(self.load_paths[0], fname)
             dfs.append(pd.read_csv(fpath))
         self.data = pd.concat(dfs).reset_index(drop=True) 
@@ -231,10 +232,10 @@ class StormfrontDataset(Dataset):
     def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(self.preprocess, self.data['text']), total=len(self.data)))
+            self.data['processed'] = list(tqdm(p.imap(self.preprocess, self.data['text']), total=len(self.data), ncols=80))
         self.data.drop(columns='text', inplace=True)
         self.data.reset_index(drop=True, inplace=True)
-        self.data.rename(columns={'processed': 'text'})
+        self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='timestamp', errors='coerce')
 
 
@@ -263,7 +264,7 @@ class Jokubausaite2020Dataset(Dataset):
         dfs = []
         for general in selected:
             fpath = os.path.join(self.load_paths[0], f'{general.replace("/", " ")} general.csv')
-            dfs.append(pd.read_csv(fpath))
+            dfs.append(pd.read_csv(fpath, low_memory=False))
 
         self.data = pd.concat(dfs).reset_index(drop=True)
 
@@ -279,16 +280,11 @@ class Papasavva2020Dataset(Dataset):
 
     def load(self):
         """ Load dataset """
-        self.data = pd.read_csv(self.load_paths[0],index_col=0).reset_index(drop=True)
+        self.data = pd.read_csv(self.load_paths[0],index_col=0, low_memory=False).reset_index(drop=True)
 
     def process(self):
         """ Process data into a format to combine with other datasets """
-        self.data.drop(columns='id').rename(columns={'no': 'id', 'com': 'body'})
-        with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(process_4chan, self.data.body), total=len(self.data), ncols=80))
-        self.data.rename(columns={'processed': 'text'}, inplace=True)
-        self.uniform_format(timestamp_col='time', unit='s')
-
+        self.data = self.data.drop(columns='id').rename(columns={'no': 'id', 'com': 'body'})
         # Remove duplicates with jokubausaite2020
         # Don't like loading it again, but easiest way for now since no way to access other unprocessed dataset
         selected = [
@@ -306,14 +302,18 @@ class Papasavva2020Dataset(Dataset):
         dfs = []
         for general in selected:
             fpath = os.path.join(self.load_paths[1], f'{general.replace("/", " ")} general.csv')
-            dfs.append(pd.read_csv(fpath))
+            dfs.append(pd.read_csv(fpath, low_memory=False))
         jokubausaite2020_ids = pd.concat(dfs).reset_index(drop=True)['id']
-
-        pdb.set_trace() # TODO: Check that some overlap is removed
         self.data = self.data[~self.data.id.isin(jokubausaite2020_ids)]
 
+        with Pool(self.n_jobs) as p:
+            self.data['processed'] = list(tqdm(p.imap(process_4chan, self.data.body), total=len(self.data), ncols=80))
+        self.data.rename(columns={'processed': 'text'}, inplace=True)
 
-class Calderon2021(Dataset):
+        self.uniform_format(timestamp_col='time', unit='s')
+
+
+class Calderon2021Dataset(Dataset):
 
     def load(self):
         """ Load data dump """
@@ -324,14 +324,14 @@ class Calderon2021(Dataset):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
             self.data['text'] = list(tqdm(p.imap(
-                    process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data)))
+                    process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data), ncols=80))
         # remove date errors. Could extract real date by parsing text
         self.data.loc[~self.data.date.str.startswith('20'), 'date'] = '' 
         self.data = self.data.drop(columns=['author_wording', 'title'])
         self.uniform_format(timestamp_col='date', errors='coerce')
 
 
-class Pruden2022(Dataset):
+class Pruden2022Dataset(Dataset):
     source_years = {
             'breivik_manifesto': 2011,
             'powell_rivers_of_blood_speech': 1968,
@@ -352,5 +352,6 @@ class Pruden2022(Dataset):
 
     def process(self): 
         """ Process data into a format to combine with other datasets """
-        self.data['processed'] = list(map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data))))
+        self.data['processed'] = list(map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data), ncols=80)))
+        self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='year', format='%Y')

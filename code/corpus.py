@@ -26,7 +26,7 @@ class Corpus:
                 datasets: list of dictionaries with names and associated loading paths for datasets
         """
         self.name = name
-        self.fpath = f'../data/{name}_corpus.json'
+        self.fpath = f'../data/corpora/{name}_corpus.json'
         self.create = create
         self.datasets = [Dataset(ds['name'], ds['source'], ds['domain'], ds['load_paths']) for ds in datasets]
         self.data = None
@@ -36,19 +36,18 @@ class Corpus:
         dfs = []
         if self.create:
             for dataset in self.datasets:
-                print(f"\tLoading and processing {dataset.name}...")
+                print(f"\tLoading and processing {dataset.name} ({dataset.source})...")
                 dataset.load()
                 dataset.process()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs)
             self.save()
         else:
-            # TODO: load processed corpora from disk
-            self.data = None
+            print(f"Loading corpus from {self.fpath}...")
+            self.data = pd.read_json(self.fpath, orient='table')
         return self
 
     def save(self):
         """ Save out corpus data for easier loading """
-        # Probs do a json thing (maybe json table)
         print(f"Saving data to {self.fpath}...")
         self.data.to_json(self.fpath, orient='table')
