@@ -7,6 +7,7 @@ import json
 import re
 import pdb
 from multiprocessing import Pool
+import datetime
 
 import pandas as pd
 import nltk
@@ -14,6 +15,7 @@ from nltk.tokenize import TweetTokenizer
 from tqdm import tqdm
 
 from utils import remove_mentions, remove_urls, tokenize_lowercase, process_4chan, process_tweet, process_article
+from corpus import Corpus
 
 
 class Dataset:
@@ -25,7 +27,7 @@ class Dataset:
     #    return set(cls.__subclasses__()).union(
     #        [s for c in cls.__subclasses__() for s in all_subclasses(c)])
 
-    def __new__(cls, name, source, domain, load_paths):
+    def __new__(cls, name, source, domain, load_paths, ref_corpus=None):
         """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
         subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
@@ -35,18 +37,20 @@ class Dataset:
         instance = super(Dataset, subclass).__new__(subclass)
         return instance
 
-    def __init__(self, name, source, domain, load_paths):
+    def __init__(self, name, source, domain, load_paths, ref_corpus=None):
         """ Args:
                 name: dataset name
                 source: source platform
                 domain: discourse type of the source (tweet, chat, forum, long-form (article or book))
                 load_paths: list of arguments for loading the datasets (like file paths)
+                ref_corpus: a dataframe of another corpus to use as a reference (for sampling a similar size, e.g.)
         """
         self.name = name
         self.source = source
         self.domain = domain
         #self.loader = getattr(load_process_dataset, f'{self.name.capitalize()}Loader')
         self.load_paths = load_paths
+        self.ref_corpus = ref_corpus
         self.n_jobs = 20 # number of processes for multiprocessing of data
         self.data = pd.DataFrame()
         #cls.get_subclass()
@@ -355,3 +359,35 @@ class Pruden2022Dataset(Dataset):
         self.data['processed'] = list(map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data), ncols=80)))
         self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='year', format='%Y')
+
+
+class Reddit_matchDataset(Dataset):
+    """ Neutral (non-white supremacist) Reddit data that matches forum data in white supremacy dataset """
+    
+    def load(self):
+        """ Load prescraped Reddit data """
+        fpaths = sorted([fname for fname in os.listdir(self.load_paths[0]) if re.match(r'\d+.*_subreddit_comments', fname)])
+        dfs = []
+        for fname in tqdm(fpaths):
+            # print(fname)
+            fpath = os.path.join(dirpath, fname)
+            if fname.endswith('.csv'):
+                sub =  pd.read_csv(fpath, index_col=0, engine='python')
+            elif fname.endswith('.pkl'):
+                sub = pd.read_pickle(fpath)
+            year, subreddit, _, _ = fname.split('_')
+            dfs.append(sub.assign(year=fname[:4]).assign(subreddit=subreddit.lower()))
+        self.data = pd.concat(dfs)
+        self.data['year'] = self.data.year.astype(int)
+
+    def process(self):
+        """ Sample data to match forum data in white supremacist data.
+            Process data for combining with other datasets in neutral corpus.
+        """
+        lookup = Corpus.ref_corpus_year_count(self.ref_corpus, 'forum')
+        self.data = self.data.groupby('year').apply(
+                lambda group: group.sample(lookup.post_count[group.name])).reset_index(drop=True)
+        with Pool(self.n_jobs) as p:
+            self.data['text'] = list(tqdm(p.imap(
+                    tokenize_lowercase, self.data['body']), total=len(self.data), ncols=80))
+        pdb.set_trace() # TODO: check that there aren't still weird HTML-based characters like &gt;

@@ -25,9 +25,10 @@ def main():
 
     # Consruct or load corpora
     print('Constructing or loading corpora...')
-    #corpora = {key: Corpus(**opts).load() for key, opts in config['corpora'].items()}
+    #corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items()}
+    corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items() if opts['create']} # for debugging
     #corpora = [Corpus(**opts).load() for opts in config['corpora']]
-    corpora = [Corpus(**opts).load() for opts in config['corpora'] if opts['create']] # for debugging
+    #corpora = [Corpus(**opts).load() for opts in config['corpora'] if opts['create']] # for debugging
     #corpora = {}
     #for role, info in config['corpora'].items():
     #    corpora[role] = Corpus(**info).load()

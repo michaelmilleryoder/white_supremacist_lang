@@ -17,18 +17,27 @@ class Corpus:
         Load, process these datasets into a uniform format for building classifiers
     """
 
-    def __init__(self, name: str, create: bool, datasets: list = []):
+    def __init__(self, name: str, create: bool, datasets: list = [], ref_corpus_name: str = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
                         and saving to self.fpath.
                         If False, will attempt to load the corpus from self.fpath
                 datasets: list of dictionaries with names and associated loading paths for datasets
+                ref_corpus_name: the name of the reference corpus that is used to construct this corpus. 
+                        Will be loaded from disk (must already be saved out) if create is True
         """
         self.name = name
-        self.fpath = f'../data/corpora/{name}_corpus.json'
+        self.base_fpath = '../data/corpora/{}_corpus.json'
+        self.fpath = self.base_fpath.format(self.name)
         self.create = create
-        self.datasets = [Dataset(ds['name'], ds['source'], ds['domain'], ds['load_paths']) for ds in datasets]
+        self.ref_corpus_name = ref_corpus_name
+        if self.ref_corpus_name is not None and self.create:
+            # Load reference corpus
+            ref_corpus_fpath = self.base_fpath.format(self.ref_corpus_name)
+            ref_corpus = self.load_corpus(ref_corpus_fpath)
+        self.datasets = [Dataset(
+                ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpus=ref_corpus) for ds in datasets]
         self.data = None
 
     def load(self):
@@ -44,10 +53,30 @@ class Corpus:
             self.save()
         else:
             print(f"Loading corpus from {self.fpath}...")
-            self.data = pd.read_json(self.fpath, orient='table')
+            self.data = self.load_corpus(self.fpath)
         return self
 
     def save(self):
         """ Save out corpus data for easier loading """
         print(f"Saving data to {self.fpath}...")
         self.data.to_json(self.fpath, orient='table')
+
+    @classmethod
+    def load_corpus(cls, path):
+        """ Load a corpus from disk and return it as a dataframe"""
+        return pd.read_json(path, orient='table')
+
+    @classmethod
+    def ref_corpus_year_count(cls, ref_corpus, domain):
+        """ Returns a table of post counts per year in a reference corpus (for matching samples) 
+            ref_corpus: pandas DataFrame of data used as a reference corpus
+            domain: value of the domain to filter the reference corpus by
+        """
+        yearly = ref_corpus.query(f'domain=="{domain}"').groupby(by=ref_corpus.timestamp.dt.year)['text'].count()
+        lookup = pd.DataFrame(yearly)
+        lookup['begin'] = pd.to_datetime(yearly.index.astype(int).astype(str), format='%Y')
+        lookup['end'] = [x.replace(year=x.year + 1) for x in lookup['begin']]
+        lookup.index.name = 'year'
+        lookup.index = lookup.index.astype(int)
+        lookup.rename(columns={'text': 'post_count'}, inplace=True)
+        return lookup

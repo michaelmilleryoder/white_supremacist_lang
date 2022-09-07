@@ -1,7 +1,7 @@
 ---
 # Define which datasets are in which corpora
 corpora:
-  - name: white_supremacist
+  white_supremacist:
     create: False
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
@@ -81,12 +81,14 @@ corpora:
         domain: long-form
         load_paths:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
-  - name: neutral
+
+  neutral:
     create: True
     datasets:
       - name: reddit_match
         source: reddit
         domain: forum
+        load_paths: '../data/neutral/reddit_comments'
 
 #classifier:
 #  name: 'bert'
