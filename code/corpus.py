@@ -8,6 +8,7 @@
 import pdb
 
 import pandas as pd
+from tqdm import tqdm
 
 from data import Dataset
 
@@ -29,12 +30,16 @@ class Corpus:
         """
         self.name = name
         self.base_fpath = '../data/corpora/{}_corpus.json'
+        self.base_tmp_fpath = '../tmp/{}_corpus.pkl'
         self.fpath = self.base_fpath.format(self.name)
+        self.tmp_fpath = self.base_tmp_fpath.format(self.name) # pickling for faster loading
         self.create = create
         self.ref_corpus_name = ref_corpus_name
+        ref_corpus = None
         if self.ref_corpus_name is not None and self.create:
             # Load reference corpus
             ref_corpus_fpath = self.base_fpath.format(self.ref_corpus_name)
+            tqdm.write("\tLoading reference corpus...")
             ref_corpus = self.load_corpus(ref_corpus_fpath)
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpus=ref_corpus) for ds in datasets]
@@ -48,6 +53,8 @@ class Corpus:
                 print(f"\tLoading and processing {dataset.name} ({dataset.source})...")
                 dataset.load()
                 dataset.process()
+                if self.ref_corpus_name is not None:
+                    dataset.print_stats()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs)
             self.save()
@@ -59,24 +66,11 @@ class Corpus:
     def save(self):
         """ Save out corpus data for easier loading """
         print(f"Saving data to {self.fpath}...")
-        self.data.to_json(self.fpath, orient='table')
+        self.data.to_json(self.fpath, orient='table', indent=4)
+        print(f"Saving data to {self.tmp_fpath}...") # for faster loading as an option
+        self.data.to_pickle(self.tmp_fpath)
 
     @classmethod
     def load_corpus(cls, path):
         """ Load a corpus from disk and return it as a dataframe"""
         return pd.read_json(path, orient='table')
-
-    @classmethod
-    def ref_corpus_year_count(cls, ref_corpus, domain):
-        """ Returns a table of post counts per year in a reference corpus (for matching samples) 
-            ref_corpus: pandas DataFrame of data used as a reference corpus
-            domain: value of the domain to filter the reference corpus by
-        """
-        yearly = ref_corpus.query(f'domain=="{domain}"').groupby(by=ref_corpus.timestamp.dt.year)['text'].count()
-        lookup = pd.DataFrame(yearly)
-        lookup['begin'] = pd.to_datetime(yearly.index.astype(int).astype(str), format='%Y')
-        lookup['end'] = [x.replace(year=x.year + 1) for x in lookup['begin']]
-        lookup.index.name = 'year'
-        lookup.index = lookup.index.astype(int)
-        lookup.rename(columns={'text': 'post_count'}, inplace=True)
-        return lookup

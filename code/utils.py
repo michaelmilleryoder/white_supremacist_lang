@@ -5,8 +5,12 @@
 """
 
 import re
+import os
+import html
 from html.parser import HTMLParser
+from datetime import datetime
 
+import pandas as pd
 import nltk
 
 
@@ -19,13 +23,19 @@ def remove_mentions(text, user_mentions):
     return new_text
 
 
-def remove_urls(text, urls):
-    """ Remove URLs from a text """
+def remove_specified_urls(text, urls):
+    """ Remove URLs from a text (with URLs provided, like in Tweet objects) """
     new_text = text
     urls = [entity['url'] for entity in urls]
     for url in urls:
-        new_text = new_text.replace(url, '<URL>')
+        #new_text = new_text.replace(url, '<URL>')
+        new_text = new_text.replace(url, '')
     return new_text
+
+
+def remove_urls(text):
+    """ Remove URLs from a text """
+    return re.sub(r'\S+(?:\.com|\.org|\.edu)\S*|https?:\/\/\S*', '', text)
 
 
 def process_tweet(text, user_mentions, urls, tokenizer):
@@ -33,7 +43,7 @@ def process_tweet(text, user_mentions, urls, tokenizer):
     if isinstance(user_mentions, list):
         new_text = remove_mentions(new_text, user_mentions)
     if isinstance(urls, list):
-        new_text = remove_urls(new_text, urls)
+        new_text = remove_specified_urls(new_text, urls)
     new_text = ' '.join(tokenizer.tokenize(new_text))
     return new_text.lower()
 
@@ -41,6 +51,12 @@ def process_tweet(text, user_mentions, urls, tokenizer):
 def tokenize_lowercase(inp):
     """ Tokenize and lowercase text """
     return ' '.join(nltk.word_tokenize(str(inp))).lower()
+
+
+def process_reddit(inp):
+    """ Remove HTML entities, tokenize and lowercase text from Reddit comments
+        gathered through PushShift """
+    return tokenize_lowercase(remove_urls(html.unescape(str(inp))))
 
 
 class MLStripper(HTMLParser):
@@ -82,3 +98,39 @@ def process_4chan(text):
 def process_article(inp):
     text = ' '.join(nltk.word_tokenize(str(inp.replace('.', '. ')))).lower()
     return text
+
+
+def process_chat(text, tokenizer):
+    """ Process Discord chat from a random sample dataset 
+        Args:
+            text: input text as a string
+            tokenizer: the tokenizer to use (expecting NLTK TweetTokenizer)
+    """
+    if ': ' in text:
+        res =  text.split(': ')[1]
+    else:
+        res = text
+    return ' '.join(tokenizer.tokenize(res)).lower()
+
+def load_now(fpath):
+    """ Load NOW article files into a pandas DataFrame """
+    fname = os.path.basename(fpath)
+    m = re.search(r'\d\d-\d\d', fname)
+    if m is None:
+        m = re.search(r'\d\d_\d\d', fname)
+        date_str = m.group()
+        date = datetime.strptime(date_str, '%y_%m')
+    else:
+        date_str = m.group()
+        date = datetime.strptime(date_str, '%y-%m')
+    year = date.year
+    with open(fpath) as f:
+        articles = f.read().splitlines()
+    return pd.DataFrame({'article': articles, 'year': year})
+
+def process_now(inp):
+    """ Preprocess NOW articles """
+    text = re.sub(r'@@\d+ ', '', inp)
+    text = re.sub(r'<\w+>', '', text)
+    text = text.replace('@ @ @ @ @ @ @ @ @ @ ', '')
+    return text.lower()

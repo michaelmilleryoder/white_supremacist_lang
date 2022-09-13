@@ -23,11 +23,13 @@ def main():
 
     print("Getting query terms from white supremacist dataset...")
     # Load white supremacist dataset to count tweets over time
-    path = '../tmp/white_supremacist_corpus.pkl'
-    ws_data = pd.read_pickle(path)
+    #path = '../tmp/white_supremacist_corpus.pkl'
+    #ws_data = pd.read_pickle(path)
+    path = '../../data/corpora/white_supremacist_corpus.json'
+    ws_data = pd.read_json(path, orient='table')
 
     # Select tweet data, Group by year
-    yearly = ws_data.query('domain=="tweet/short propaganda"').groupby(by=ws_data.timestamp.dt.year)['text'].count()
+    yearly = ws_data.query('domain=="tweet"').groupby(by=ws_data.timestamp.dt.year)['text'].count()
     lookup = pd.DataFrame(yearly)
     lookup['begin'] = pd.to_datetime(yearly.index.astype(int).astype(str), format='%Y')
     lookup['end'] = [min(x.replace(year=x.year + 1), datetime.now()) for x in lookup['begin']]
@@ -48,7 +50,7 @@ def main():
         """ See if word is ok to be a query """
         return re.search('[a-zA-Z]', word) and not (word in stopwords or word in slurs or word.startswith('#') or word.startswith('http') or word.startswith('http') or '.' in word)
 
-    words_by_year = ws_data.query('domain=="tweet/short propaganda"').groupby(by=ws_data.timestamp.dt.year).agg(
+    words_by_year = ws_data.query('domain=="tweet"').groupby(by=ws_data.timestamp.dt.year).agg(
         {'text': lambda x: {w: count for w, count in Counter([w for w in ' '.join(x).split() if check_word(w)]).items() if count > 1}})
     words_by_year['text'] = words_by_year
 
@@ -93,11 +95,12 @@ def main():
         tweets = [tweet.data for response in fetched for tweet in response.data if response.data is not None]
 
         # Save out tweet data
-        out_dirpath = '../data/neutral/twitter'
-        outpath = os.path.join(out_dirpath, f'{row.begin.year}_data.jsonl')
-        with open(outpath, 'w') as f:
-            f.write('\n'.join([json.dumps(tweet) for tweet in tweets]) + '\n')
-        tqdm.write(f"Saved out data to {outpath}")
+        if len(tweets) > 0:
+            out_dirpath = '../data/neutral/twitter'
+            outpath = os.path.join(out_dirpath, f'{row.begin.year}_data.jsonl')
+            with open(outpath, 'w') as f:
+                f.write('\n'.join([json.dumps(tweet) for tweet in tweets]) + '\n')
+            tqdm.write(f"Saved out data to {outpath}")
 
 
 if __name__ == '__main__':

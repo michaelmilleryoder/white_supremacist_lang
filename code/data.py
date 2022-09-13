@@ -8,14 +8,33 @@ import re
 import pdb
 from multiprocessing import Pool
 import datetime
+import itertools
 
 import pandas as pd
+import numpy as np
 import nltk
 from nltk.tokenize import TweetTokenizer
 from tqdm import tqdm
 
-from utils import remove_mentions, remove_urls, tokenize_lowercase, process_4chan, process_tweet, process_article
-from corpus import Corpus
+from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
+        process_tweet, process_article, process_reddit, process_chat, load_now, process_now)
+
+
+def ref_corpus_year_count(ref_corpus):
+    """ Returns a table of post and word counts per year in a reference corpus (for matching samples) 
+        ref_corpus: pandas DataFrame of data used as a reference corpus
+    """
+    yearly = ref_corpus.groupby(by=ref_corpus.timestamp.dt.year).agg({
+        'text': 'count',
+        'word_count': ['sum', 'mean'],
+        })
+    lookup = pd.DataFrame(yearly)
+    #lookup['begin'] = pd.to_datetime(yearly.index.astype(int).astype(str), format='%Y')
+    #lookup['end'] = [x.replace(year=x.year + 1) for x in lookup['begin']]
+    lookup.index.name = 'year'
+    lookup.index = lookup.index.astype(int)
+    lookup.rename(columns={'text': 'post_count'}, inplace=True)
+    return lookup
 
 
 class Dataset:
@@ -51,6 +70,10 @@ class Dataset:
         #self.loader = getattr(load_process_dataset, f'{self.name.capitalize()}Loader')
         self.load_paths = load_paths
         self.ref_corpus = ref_corpus
+        if self.ref_corpus is not None:
+            self.ref_corpus = ref_corpus.query(f'domain=="{domain}"').copy()
+            self.ref_corpus['word_count'] = self.ref_corpus.text.str.split().str.len()
+            self.lookup = ref_corpus_year_count(self.ref_corpus)
         self.n_jobs = 20 # number of processes for multiprocessing of data
         self.data = pd.DataFrame()
         #cls.get_subclass()
@@ -61,6 +84,7 @@ class Dataset:
             Create an index for the dataset with the dataset name.
             Add a column of the dataset name, source and domain.
             Filter self.data to just the columns needed from all datasets:
+                text, timestamp (if present), dataset, source, domain
             Args:
                 timestamp_col: the name of a column to convert to a datetime data type. If None, no timestamp
                 unit: Additional parameter to pass to pd.to_datetime
@@ -80,12 +104,23 @@ class Dataset:
             self.data = self.data[['text', 'dataset', 'source', 'domain']]
 
     def load(self):
-        """ Needs to be overridden in a subclass """
+        """ Usually overridden in a subclass """
         self.data = pd.read_csv(self.load_paths[0])
 
     def process(self):
         """ Needs to be overridden in a subclass """
         pass
+
+    def print_stats(self):
+        """ Print statistics on number of posts and word count per year compared to the reference corpus
+        """
+
+        # Comparison to matching white supremacist data
+        self.data['word_count'] = self.data.text.str.split().str.len()
+        print(f'\t\tMatching white supremacist corpus word count mean: {self.ref_corpus.word_count.mean()}')
+        print(f'\t\tNeutral word count mean: {self.data.word_count.mean()}')
+        print(f'\t\tMatching white supremacist corpus word count sum: {self.ref_corpus.word_count.sum()}')
+        print(f'\t\tNeutral word count sum: {self.data.word_count.sum()}')
 
 
 class Qian2018Dataset(Dataset):
@@ -363,31 +398,129 @@ class Pruden2022Dataset(Dataset):
 
 class Reddit_matchDataset(Dataset):
     """ Neutral (non-white supremacist) Reddit data that matches forum data in white supremacy dataset """
-    
+
     def load(self):
-        """ Load prescraped Reddit data """
-        fpaths = sorted([fname for fname in os.listdir(self.load_paths[0]) if re.match(r'\d+.*_subreddit_comments', fname)])
+        """ Load prescraped Reddit data (get_reddit.py) """
+        fpaths = sorted([fname for fname in os.listdir(self.load_paths[0]) if fname.endswith('.json')])
         dfs = []
-        for fname in tqdm(fpaths):
+        for fname in tqdm(fpaths, ncols=80):
             # print(fname)
-            fpath = os.path.join(dirpath, fname)
-            if fname.endswith('.csv'):
-                sub =  pd.read_csv(fpath, index_col=0, engine='python')
-            elif fname.endswith('.pkl'):
-                sub = pd.read_pickle(fpath)
-            year, subreddit, _, _ = fname.split('_')
-            dfs.append(sub.assign(year=fname[:4]).assign(subreddit=subreddit.lower()))
+            fpath = os.path.join(self.load_paths[0], fname)
+            sub = pd.read_json(fpath, orient='table')
+            subreddit = fname.split('_')[0]
+            dfs.append(sub.assign(subreddit=subreddit.lower()))
         self.data = pd.concat(dfs)
-        self.data['year'] = self.data.year.astype(int)
+        #self.data['year'] = self.data.created_utc.dt.year
 
     def process(self):
         """ Sample data to match forum data in white supremacist data.
             Process data for combining with other datasets in neutral corpus.
         """
-        lookup = Corpus.ref_corpus_year_count(self.ref_corpus, 'forum')
-        self.data = self.data.groupby('year').apply(
-                lambda group: group.sample(lookup.post_count[group.name])).reset_index(drop=True)
+        self.data = self.data.groupby(self.data.created_utc.dt.year).apply(
+                lambda group: group.sample(self.lookup[('post_count', 'count')][group.name])).reset_index(drop=True)
         with Pool(self.n_jobs) as p:
             self.data['text'] = list(tqdm(p.imap(
-                    tokenize_lowercase, self.data['body']), total=len(self.data), ncols=80))
-        pdb.set_trace() # TODO: check that there aren't still weird HTML-based characters like &gt;
+                    process_reddit, self.data['body']), total=len(self.data), ncols=80))
+        self.uniform_format(timestamp_col='created_utc')
+
+    #def print_stats(self):
+    #    """ Print statistics on number of posts and word count per year compared to the reference corpus
+    #        TODO: need to get subreddit proportions before uniform_format
+    #    """
+
+    #    # Subreddit proportions
+    #    sub_distro = pd.concat([self.data.subreddit.value_counts(), self.data.subreddit.value_counts(normalize=True)], axis=1)
+    #    sub_distro.columns = ['post_count', 'proportion']
+    #    print(sub_distro.to_string())
+
+    #    # Comparison to matching white supremacist data
+    #    post_counts = pd.concat([self.lookup['post_count'], 
+    #        self.data.groupby(self.data.created_utc.dt.year).text.count()], axis=1)
+    #    print(post_counts.to_string())
+
+    #    super().print_stats()
+
+
+class Discord_matchDataset(Dataset):
+    """ Neutral (non-white supremacist) Discord data to match chat data in white supremacy dataset """
+    
+    def load(self):
+        """ Load Discord random dataset """
+        fpaths = [os.path.join(self.load_paths[0], fname) for fname in os.listdir(self.load_paths[0]) if fname.endswith('.txt')]
+        dfs = []
+        for fpath in tqdm(fpaths, ncols=80):
+            with open(fpath) as f:
+                dfs.append(pd.DataFrame({'message': [message for line in f.read().splitlines() for message in line.split('\t')]}))
+        self.data = pd.concat(dfs)
+
+    def process(self):
+        """ Sample data to match chat data in white supremacist training dataset.
+            Process data for combining with other datasets in neutral corpus.
+        """
+
+        # Sample to match the word count of white supremacist matching chat data
+        self.data = self.data.sample(int(self.ref_corpus.word_count.sum()/4.2)) 
+        # 4.2 is the average words/posts in the Discord data (see neutral_data.ipynb)
+
+        # Process data
+        tokenizer = TweetTokenizer(strip_handles=True)
+        zipped = zip(self.data['message'], itertools.repeat(tokenizer))
+        with Pool(self.n_jobs) as p:
+            #self.data['text'] = list(tqdm(p.imap(process_chat, *zipped), total=len(self.data), ncols=80))
+            self.data['text'] = p.starmap(process_chat, tqdm(zipped, total=len(self.data), ncols=80))
+        self.uniform_format()
+
+
+class News_matchDataset(Dataset):
+    """ Neutral (non-white supremacist) news data to match long-form article data in white supremacy dataset """
+
+    def load(self):
+        """ Load NOW news corpus """
+        countries = [ # since most articles are from the Daily Stormer and American Renaissance, US-based websites
+            'us'
+        ]
+        fpaths = sorted([os.path.join(self.load_paths[0], fname) for fname in os.listdir(self.load_paths[0]) if re.search(
+                r'us', fname, flags=re.IGNORECASE)])
+
+        with Pool(20) as p:
+            dfs = list(tqdm(p.imap(load_now, fpaths), total=len(fpaths), ncols=80))
+        self.data = pd.concat(dfs)
+
+    def process(self):
+        """ Sample data to match long-form data in white supremacist training dataset.
+            Process data for combining with other datasets in neutral corpus.
+        """
+        # Sample specific number of articles by year
+        self.data = self.data[self.data['year'].isin(self.lookup.index)].groupby('year').apply(
+                lambda group: group.sample(int(self.lookup.loc[group.name, ('post_count', 'count')]/3.5))).reset_index(
+                drop = True)
+        # 3.5 is approximately the number of articles to match the word count in white supremacist data
+
+        # Process data
+        with Pool(self.n_jobs) as p:
+            self.data['text'] = list(tqdm(p.imap(
+                    process_now, self.data['article']), total=len(self.data), ncols=80))
+        self.uniform_format(timestamp_col='year', format='%Y')
+
+
+class Twitter_matchDataset(Dataset):
+    """ Neutral (non-white supremacist) Twitter data to match Twitter data in white supremacy dataset """
+
+    def load(self):
+        """ Load tweets collected through keywords at get_tweets_by_query.py (I think) and get_tweets_by_query.ipynb """
+        dfs = []
+        for fname in tqdm(sorted(os.listdir(self.load_paths[0]))):
+            with open(os.path.join(self.load_paths[0], fname)) as f:
+                dfs.append(pd.json_normalize([json.loads(line) for line in f.read().splitlines()]))
+        self.data = pd.concat(dfs).reset_index(drop=True)
+
+    def process(self):
+        """ Process data for combining with other datasets in neutral corpus.
+        """
+        tokenizer = TweetTokenizer(strip_handles=True)
+        self.data['processed_text'] = [process_tweet(
+                text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
+                self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), total=len(self.data), ncols=80)]
+        self.data.drop(columns='text', inplace=True)
+        self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
+        self.uniform_format(timestamp_col='created_at')

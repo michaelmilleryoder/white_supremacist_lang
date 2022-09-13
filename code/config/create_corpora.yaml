@@ -1,8 +1,9 @@
 ---
 # Define which datasets are in which corpora
 corpora:
-  white_supremacist:
-    create: False
+
+  white_supremacist_train:
+    create: True
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -82,13 +83,30 @@ corpora:
         load_paths:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
 
-  neutral:
-    create: True
+  neutral_train:
+    create: False
     datasets:
       - name: reddit_match
         source: reddit
         domain: forum
-        load_paths: '../data/neutral/reddit_comments'
+        load_paths: 
+          - '../data/neutral/reddit_comments'
+      - name: discord_match
+        source: discord
+        domain: chat
+        load_paths: 
+          - '/storage2/mamille3/data/discord/v3/content/drive/Shareddrives/Datasets/cleaned-v4/discord-v3'
+      - name: news_match
+        source: news
+        domain: long-form
+        load_paths: 
+          - '/storage2/mamille3/data/news/now2010-2021/text'
+      - name: twitter_match
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '/storage2/mamille3/white_supremacist_lang/data/neutral/twitter/'
+    ref_corpus_name: 'white_supremacist_train'
 
 #classifier:
 #  name: 'bert'
