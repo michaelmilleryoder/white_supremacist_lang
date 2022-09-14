@@ -77,9 +77,8 @@ def main():
     for i, row in lookup.iterrows():
         tqdm.write(str(i))
         fetched = []
-        n_queries = len(row.sampled_words)
-        #for j, (word, count) in enumerate(tqdm(row.sampled_words, total=n_queries, ncols=80):
         for j, (word, count) in enumerate(tqdm(row.sampled_words, ncols=80)):
+        #for j, (word, count) in enumerate(tqdm(row.sampled_words[:10], ncols=80)): # debugging
             try:
                 response = client.search_all_tweets(
                         word + ' lang:en', 
@@ -87,12 +86,18 @@ def main():
                         start_time=row.begin, 
                         end_time=row.end, 
                         max_results=count*10)
+                if response.data is None:
+                    pdb.set_trace()
+                fetched.append(response)
             except tweepy.BadRequest as e:
                 tqdm.write(str(e))
                 tqdm.write(f'Bad request: {word}')
             time.sleep(1)
             #tqdm.write(f'{j} requests done')
-        tweets = [tweet.data for response in fetched for tweet in response.data if response.data is not None]
+        try:
+            tweets = [tweet.data for response in fetched for tweet in response.data if response.data is not None]
+        except Exception as e:
+            pdb.set_trace()
 
         # Save out tweet data
         if len(tweets) > 0:

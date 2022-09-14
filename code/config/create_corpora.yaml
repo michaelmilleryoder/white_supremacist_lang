@@ -3,7 +3,7 @@
 corpora:
 
   white_supremacist_train:
-    create: True
+    create: False
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -84,7 +84,7 @@ corpora:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
 
   neutral_train:
-    create: False
+    create: True
     datasets:
       - name: reddit_match
         source: reddit
