@@ -65,7 +65,7 @@ class Corpus:
 
     def save(self):
         """ Save out corpus data for easier loading """
-        print(f"Saving data to {self.fpath}...")
+        print(f"Saving corpus to {self.fpath}...")
         self.data.to_json(self.fpath, orient='table', indent=4)
         print(f"Saving data to {self.tmp_fpath}...") # for faster loading as an option
         self.data.to_pickle(self.tmp_fpath)

@@ -10,7 +10,7 @@ import pdb
 import pandas as pd
 
 from corpus import Corpus
-#from bert_classifier import BertClassifier
+from experiment import Experiment
 
 
 def main():
@@ -25,8 +25,8 @@ def main():
 
     # Consruct or load corpora
     print('Constructing or loading corpora...')
-    #corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items()}
-    corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items() if opts['create']} # for debugging
+    corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items()}
+    #corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items() if opts['create']} # for debugging
     #corpora = [Corpus(**opts).load() for opts in config['corpora']]
     #corpora = [Corpus(**opts).load() for opts in config['corpora'] if opts['create']] # for debugging
     #corpora = {}
@@ -34,8 +34,11 @@ def main():
     #    corpora[role] = Corpus(**info).load()
 
     # Train and evaluate classifier
-    #clf = BertClassifier() # put in config options
-    #clf.run()
+    exp = Experiment(corpora[config['experiment']['train_pos']], 
+                    corpora[config['experiment']['train_neg']], 
+                    corpora[config['experiment']['test']], 
+                    config['experiment']['classifier'])
+    exp.run()
 
 
 if __name__ == '__main__':

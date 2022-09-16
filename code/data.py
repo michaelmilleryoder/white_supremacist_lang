@@ -98,10 +98,8 @@ class Dataset:
         self.data['dataset'] = self.name
         self.data['source'] = self.source
         self.data['domain'] = self.domain
-        if 'timestamp' in self.data.columns:
-            self.data = self.data[['text', 'timestamp', 'dataset', 'source', 'domain']]
-        else:
-            self.data = self.data[['text', 'dataset', 'source', 'domain']]
+        selected_cols = ['text', 'dataset', 'source', 'domain'] + [col for col in ['timestamp', 'label'] if col in self.data.columns]
+        self.data = self.data[selected_cols]
 
     def load(self):
         """ Usually overridden in a subclass """
@@ -524,3 +522,13 @@ class Twitter_matchDataset(Dataset):
         self.data.drop(columns='text', inplace=True)
         self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='created_at')
+
+
+class Alatawi2021Dataset(Dataset):
+    """ Tweets annotated for white supremacy from Alatawi+ 2021 paper """
+    
+    def process(self):
+        """ Process data for evaluating classifiers based on other datasets. """
+        self.data['text'] = self.data['input.text'].map(tokenize_lowercase)
+        self.data['label'] = self.data['Voting and Final Labels']
+        self.uniform_format()
