@@ -76,6 +76,9 @@ def main():
 
     for i, row in lookup.iterrows():
         tqdm.write(str(i))
+        out_dirpath = '../../data/neutral/twitter'
+        if not os.path.exists(out_dirpath):
+            raise ValueError("Output directory doesn't exist")
         fetched = []
         for j, (word, count) in enumerate(tqdm(row.sampled_words, ncols=80)):
         #for j, (word, count) in enumerate(tqdm(row.sampled_words[:10], ncols=80)): # debugging
@@ -86,9 +89,8 @@ def main():
                         start_time=row.begin, 
                         end_time=row.end, 
                         max_results=count*10)
-                if response.data is None:
-                    pdb.set_trace()
-                fetched.append(response)
+                if response.data is not None:
+                    fetched.append(response)
             except tweepy.BadRequest as e:
                 tqdm.write(str(e))
                 tqdm.write(f'Bad request: {word}')
@@ -101,7 +103,6 @@ def main():
 
         # Save out tweet data
         if len(tweets) > 0:
-            out_dirpath = '../data/neutral/twitter'
             outpath = os.path.join(out_dirpath, f'{row.begin.year}_data.jsonl')
             with open(outpath, 'w') as f:
                 f.write('\n'.join([json.dumps(tweet) for tweet in tweets]) + '\n')

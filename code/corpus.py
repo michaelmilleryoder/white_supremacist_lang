@@ -38,7 +38,8 @@ class Corpus:
         ref_corpus = None
         if self.ref_corpus_name is not None and self.create:
             # Load reference corpus
-            ref_corpus_fpath = self.base_fpath.format(self.ref_corpus_name)
+            #ref_corpus_fpath = self.base_fpath.format(self.ref_corpus_name)
+            ref_corpus_fpath = self.base_tmp_fpath.format(self.ref_corpus_name)
             tqdm.write("\tLoading reference corpus...")
             ref_corpus = self.load_corpus(ref_corpus_fpath)
         self.datasets = [Dataset(
@@ -73,4 +74,9 @@ class Corpus:
     @classmethod
     def load_corpus(cls, path):
         """ Load a corpus from disk and return it as a dataframe"""
-        return pd.read_json(path, orient='table')
+        res = None
+        if path.endswith('.json'):
+            res = pd.read_json(path, orient='table')
+        elif path.endswith('.pkl'):
+            res = pd.read_pickle(path)
+        return res
