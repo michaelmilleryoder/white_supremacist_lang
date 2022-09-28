@@ -12,24 +12,31 @@ import numpy as np
 
 class BertClassifier:
 
-    def __init__(self):
+    def __init__(self, load=None):
+        """ Args:
+                load: None to train a new model from scratch, or a path to the model to load and further train
+        """
         self.n_epochs = 3
         self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.metrics = {'accuracy': load_metric('accuracy'), 
                'f1': load_metric('f1')}
-        self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+        if load is None:
+            self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+        else:
+            self.model = AutoModelForSequenceClassification.from_pretrained(load)
         self.batch_size = 16
-        self.checkpoint = self.batch_size * int(1e3)
+        self.checkpoint = self.batch_size * int(2e3)
         self.training_args = TrainingArguments(
-            output_dir="./results",
+            logging_dir='../logs',
+            output_dir="../models/bert",
             learning_rate=2e-5,
             per_device_train_batch_size = self.batch_size,
             per_device_eval_batch_size = self.batch_size,
             num_train_epochs=3,
             weight_decay=0.01,
-            evaluation_strategy='epoch',
-            save_strategy='epoch',
+            evaluation_strategy='steps',
+            save_strategy='steps',
             logging_steps = self.checkpoint,
             eval_steps = self.checkpoint,
             save_steps = self.checkpoint,
@@ -63,6 +70,7 @@ class BertClassifier:
         )
         print('Training model...')
         self.trainer.train()
+        self.trainer.save_metrics('all', self.trainer.metrics)
 
     def prepare_dataset(self, data: pd.DataFrame):
         """ Prepare dataset into a format for training or evaluating.
@@ -73,7 +81,7 @@ class BertClassifier:
         """
         print('Preparing training data...')
         ds = Dataset.from_pandas(data).train_test_split(test_size=0.1)
-        tokenized = data.map(self.preprocess, batched=True)
+        tokenized = ds.map(self.preprocess, batched=True)
         return (ds, tokenized)
 
     def preprocess(self, examples):

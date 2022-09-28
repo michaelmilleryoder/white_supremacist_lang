@@ -4,3 +4,5 @@ tmp/
 .ipynb_checkpoints/
 __pycache__
 results/
+models/
+logs/

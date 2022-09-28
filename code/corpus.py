@@ -5,6 +5,7 @@
     @year 2022
 """
 
+import os
 import pdb
 
 import pandas as pd
@@ -58,10 +59,16 @@ class Corpus:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs)
+            # TODO: Save out stats on the dataset in a log or output dir (#posts, #words per domain type, overall)
             self.save()
         else:
-            print(f"Loading corpus from {self.fpath}...")
-            self.data = self.load_corpus(self.fpath)
+            # Try loading from pickle since it's faster
+            if os.path.exists(self.tmp_fpath):
+                load_path = self.tmp_fpath
+            else:
+                load_path = self.fpath
+            print(f"Loading corpus from {load_path}...")
+            self.data = self.load_corpus(load_path)
         return self
 
     def save(self):

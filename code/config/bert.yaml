@@ -116,16 +116,17 @@ corpora:
         domain: tweet
         load_paths:
           - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
-    
+      #- name: siegel2021 
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths:
+      #    - '../data/siegel2021/white_nationalist_training_data.csv'
 
-#classifier:
-#  name: 'bert'
-#  settings:
-#    n_gpus: 1
-#    gpu_ids: [1] # list of ids or 'all'
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   train_pos: white_supremacist_train
   train_neg: neutral_train
   test: annotated_test
-  classifier: bert
+  classifier: 
+    type: bert
+    load: Null # Null to train a new model from scratch, or a path to the model to load and further train

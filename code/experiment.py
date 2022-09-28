@@ -8,19 +8,19 @@ from corpus import Corpus
 
 class Experiment:
 
-    def __init__(self, train_pos: Corpus, train_neg: Corpus, test: Corpus, classifier: str):
+    def __init__(self, train_pos: Corpus, train_neg: Corpus, test: Corpus, classifier: dict):
         """ Args:
                 train_pos: training corpus of positive class (white supremacist) examples
                 train_neg: training corpus of negative class (non-white supremacist) examples
                 test: evaluation corpus, unseen by the model. Should already have a column of 'label' in test.corpus
-                classifier: name of classifier to use {bert}
+                classifier: dict of info on the classifier. Should include a key of 'type' with a string in {bert}
         """
         self.train_pos = train_pos
         self.train_neg = train_neg
         self.test = test
         self.clf = None
-        if classifier == 'bert':
-            self.clf = BertClassifier()
+        if classifier['type'] == 'bert':
+            self.clf = BertClassifier(classifier['load'])
         
     def run(self):
         self.train()

@@ -532,3 +532,14 @@ class Alatawi2021Dataset(Dataset):
         self.data['text'] = self.data['input.text'].map(tokenize_lowercase)
         self.data['label'] = self.data['Voting and Final Labels']
         self.uniform_format()
+
+
+class Siegel2021Dataset(Dataset):
+    """ Tweets annotated for white nationalism from Siegel+ 2021 paper """
+
+    def process(self):
+        """ Process data for evaluating classifiers based on other datasets. """
+        self.data['text'] = self.data['text'].map(process_tweet)
+        self.data['label'] = self.data['white_nationalism_total'].map(lambda x: 1 if x=='yes' else 0)
+        self.uniform_format()
+
