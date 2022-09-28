@@ -124,6 +124,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
+  run: True
   train_pos: white_supremacist_train
   train_neg: neutral_train
   test: annotated_test

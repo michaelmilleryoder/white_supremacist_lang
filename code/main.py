@@ -34,11 +34,12 @@ def main():
     #    corpora[role] = Corpus(**info).load()
 
     # Train and evaluate classifier
-    exp = Experiment(corpora[config['experiment']['train_pos']], 
-                    corpora[config['experiment']['train_neg']], 
-                    corpora[config['experiment']['test']], 
-                    config['experiment']['classifier'])
-    exp.run()
+    if config['experiment']['run']:
+        exp = Experiment(corpora[config['experiment']['train_pos']], 
+                        corpora[config['experiment']['train_neg']], 
+                        corpora[config['experiment']['test']], 
+                        config['experiment']['classifier'])
+        exp.run()
 
 
 if __name__ == '__main__':

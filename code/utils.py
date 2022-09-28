@@ -38,6 +38,11 @@ def remove_urls(text):
     return re.sub(r'\S+(?:\.com|\.org|\.edu)\S*|https?:\/\/\S*', '', text)
 
 
+def remove_nonlatin(text):
+    """ Remove non-Latin characters from a text """
+    return re.sub(u'[^\\x00-\\x7F\\x80-\\xFF\\u0100-\\u017F\\u0180-\\u024F\\u1E00-\\u1EFF]', '', text)
+
+
 def process_tweet(text, user_mentions, urls, tokenizer):
     new_text = text
     if isinstance(user_mentions, list):
@@ -45,6 +50,18 @@ def process_tweet(text, user_mentions, urls, tokenizer):
     if isinstance(urls, list):
         new_text = remove_specified_urls(new_text, urls)
     new_text = ' '.join(tokenizer.tokenize(new_text))
+    return new_text.lower()
+
+
+def process_tweet_text(text, tokenizer):
+    """ Process tweet text (if user mentions and urls are not available) """
+    new_text = text
+    new_text = remove_urls(new_text)
+    new_text = remove_nonlatin(new_text)
+    new_text = ' '.join(tokenizer.tokenize(new_text))
+    new_text = new_text.replace('RT : ', '')
+    new_text = new_text.replace('_', '') # specific to Rieger+2021 dataset issues
+    new_text = re.sub('http|https', '', new_text) # specific to Rieger+2021 dataset issues
     return new_text.lower()
 
 

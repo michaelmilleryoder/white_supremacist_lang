@@ -17,7 +17,8 @@ from nltk.tokenize import TweetTokenizer
 from tqdm import tqdm
 
 from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
-        process_tweet, process_article, process_reddit, process_chat, load_now, process_now)
+        process_tweet, process_tweet_text, process_article, process_reddit, process_chat, 
+        load_now, process_now)
 
 
 def ref_corpus_year_count(ref_corpus):
@@ -539,7 +540,7 @@ class Siegel2021Dataset(Dataset):
 
     def process(self):
         """ Process data for evaluating classifiers based on other datasets. """
-        self.data['text'] = self.data['text'].map(process_tweet)
+        tokenizer = TweetTokenizer(strip_handles=True)
+        self.data['text'] = [process_tweet_text(text, tokenizer) for text in self.data['text']]
         self.data['label'] = self.data['white_nationalism_total'].map(lambda x: 1 if x=='yes' else 0)
         self.uniform_format()
-
