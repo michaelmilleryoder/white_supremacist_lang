@@ -16,15 +16,18 @@ class BertClassifier:
         """ Args:
                 load: None to train a new model from scratch, or a path to the model to load and further train
         """
-        self.n_epochs = 3
-        self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-        self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
-        self.metrics = {'accuracy': load_metric('accuracy'), 
-               'f1': load_metric('f1')}
         if load is None:
             self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+            self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
+            self.tokenizer = AutoTokenizer.from_pretrained(load)
+        self.n_epochs = 3
+        self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
+        self.metrics = {'accuracy': load_metric('accuracy'), 
+                'precision': load_metric('precision'),
+                'recall': load_metric('recall'),
+               'f1': load_metric('f1')}
         self.batch_size = 16
         self.checkpoint = self.batch_size * int(2e3)
         self.training_args = TrainingArguments(
@@ -43,7 +46,14 @@ class BertClassifier:
         )
         self.train_data = None
         self.train_tokenized = None
-        self.trainer = None
+        #self.trainer = None
+        self.trainer = Trainer(
+            model = self.model,
+            args = self.training_args,
+            tokenizer = self.tokenizer,
+            data_collator = self.data_collator,
+            compute_metrics = self.compute_metrics,
+        )
         self.test_data = None
         self.test_tokenized = None
 
@@ -58,29 +68,33 @@ class BertClassifier:
             Args:
                 data: the training data
         """
-        self.train_data, self.train_tokenized = self.prepare_dataset(data)
-        self.trainer = Trainer(
-            model = self.model,
-            args = self.training_args,
-            train_dataset = self.train_tokenized["train"],
-            eval_dataset = self.train_tokenized["test"],
-            tokenizer = self.tokenizer,
-            data_collator = self.data_collator,
-            compute_metrics = self.compute_metrics,
-        )
+        self.train_data, self.train_tokenized = self.prepare_dataset(data, split=True)
+        self.trainer.train_dataset = self.train_tokenized["train"],
+        self.trainer.eval_dataset = self.train_tokenized["test"],
+        #self.trainer = Trainer(
+        #    model = self.model,
+        #    args = self.training_args,
+        #    train_dataset = self.train_tokenized["train"],
+        #    eval_dataset = self.train_tokenized["test"],
+        #    tokenizer = self.tokenizer,
+        #    data_collator = self.data_collator,
+        #    compute_metrics = self.compute_metrics,
+        #)
         print('Training model...')
-        self.trainer.train()
-        self.trainer.save_metrics('all', self.trainer.metrics)
+        res = self.trainer.train()
+        self.trainer.save_metrics('all', res.metrics)
 
-    def prepare_dataset(self, data: pd.DataFrame):
+    def prepare_dataset(self, data: pd.DataFrame, split=False):
         """ Prepare dataset into a format for training or evaluating.
             Args:
                 data: the training data
             Returns:
-                (HuggingFace DatasetDict with train and test splits, tokenized dataset)
+                Tuple with (HuggingFace DatasetDict with train and test splits (optionally), tokenized dataset)
         """
         print('Preparing training data...')
-        ds = Dataset.from_pandas(data).train_test_split(test_size=0.1)
+        ds = Dataset.from_pandas(data)
+        if split:
+            ds = ds.train_test_split(test_size=0.1)
         tokenized = ds.map(self.preprocess, batched=True)
         return (ds, tokenized)
 
@@ -94,5 +108,5 @@ class BertClassifier:
                 test: pandas DataFrame of unseen data, containing 'text' and 'label' columns
         """
         print("Evaluating on test corpus...")
-        self.test_data, self.test_tokenized = self.prepare_dataset(test)
+        self.test_data, self.test_tokenized = self.prepare_dataset(test, split=False)
         self.trainer.evaluate(self.test_tokenized)
