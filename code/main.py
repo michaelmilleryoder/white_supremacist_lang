@@ -36,11 +36,13 @@ def main():
     # Train and evaluate classifier
     if config['experiment']['train'] or config['experiment']['test']:
         exp = Experiment(
+                        config['experiment']['name'],
                         config['experiment']['train'],
                         config['experiment']['test'],
                         corpora[config['experiment']['train_pos']], 
                         corpora[config['experiment']['train_neg']], 
                         corpora[config['experiment']['test_corpus']], 
+                        config['experiment']['test_by_dataset'],
                         config['experiment']['classifier'])
         exp.run()
 

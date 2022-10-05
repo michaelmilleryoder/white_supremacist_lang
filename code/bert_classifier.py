@@ -2,6 +2,9 @@
     @author Michael Miller Yoder
     @year 2022
 """
+import os
+import pdb
+from pprint import pprint
 
 import pandas as pd
 from datasets import Dataset, load_metric
@@ -30,9 +33,10 @@ class BertClassifier:
                'f1': load_metric('f1')}
         self.batch_size = 16
         self.checkpoint = self.batch_size * int(2e3)
+        self.output_dir = "../output/bert"
         self.training_args = TrainingArguments(
             logging_dir='../logs',
-            output_dir="../models/bert",
+            output_dir=self.output_dir,
             learning_rate=2e-5,
             per_device_train_batch_size = self.batch_size,
             per_device_eval_batch_size = self.batch_size,
@@ -43,6 +47,7 @@ class BertClassifier:
             logging_steps = self.checkpoint,
             eval_steps = self.checkpoint,
             save_steps = self.checkpoint,
+            report_to = 'wandb',
         )
         self.train_data = None
         self.train_tokenized = None
@@ -102,11 +107,33 @@ class BertClassifier:
         """ Preprocess HuggingFace dataset """
         return self.tokenizer(examples["text"], truncation=True)
 
-    def evaluate(self, test: pd.DataFrame):
+    def evaluate(self, test: pd.DataFrame, exp_name: str, test_by_dataset=False):
         """ Evaluate the model on an unseen dataset.
             Args:
                 test: pandas DataFrame of unseen data, containing 'text' and 'label' columns
+                exp_name: name of the experiment (for the output filename)
+                test_by_dataset: whether to evaluate each dataset separately in the test corpus
         """
         print("Evaluating on test corpus...")
-        self.test_data, self.test_tokenized = self.prepare_dataset(test, split=False)
-        self.trainer.evaluate(self.test_tokenized)
+        result_lines = []
+        if test_by_dataset:
+            for dataset in test.dataset.unique():
+                selected = test.query('dataset==@dataset')
+                test_data, test_tokenized = self.prepare_dataset(selected, split=False)
+                res = self.trainer.evaluate(test_tokenized)
+                result_lines.append(
+                    {'dataset': dataset, 'f1': res['eval_f1']['f1'], 'precision': res['eval_precision']['precision'],
+                     'recall': res['eval_recall']['recall'], 'accuracy': res['eval_accuracy']['accuracy']}
+                )
+        else:
+            self.test_data, self.test_tokenized = self.prepare_dataset(test, split=False)
+            res = self.trainer.evaluate(self.test_tokenized)
+            result_lines.append(
+                {'dataset': dataset, 'f1': res['eval_f1']['f1'], 'precision': res['eval_precision']['precision'],
+                 'recall': res['eval_recall']['recall'], 'accuracy': res['eval_accuracy']['accuracy']}
+            )
+        results = pd.DataFrame(result_lines)
+        outpath = os.path.join(self.output_dir, f'{exp_name}_results.jsonl')
+        results.to_json(outpath, orient='records', lines=True)
+        print(f"Saved results to {outpath}")
+        #self.trainer.save_metrics('all', res)
