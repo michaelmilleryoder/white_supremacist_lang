@@ -48,10 +48,10 @@ class BertClassifier:
             eval_steps = self.checkpoint,
             save_steps = self.checkpoint,
             report_to = 'wandb',
+            run_name='ws_neutral',
         )
         self.train_data = None
         self.train_tokenized = None
-        #self.trainer = None
         self.trainer = Trainer(
             model = self.model,
             args = self.training_args,
@@ -74,17 +74,18 @@ class BertClassifier:
                 data: the training data
         """
         self.train_data, self.train_tokenized = self.prepare_dataset(data, split=True)
-        self.trainer.train_dataset = self.train_tokenized["train"],
-        self.trainer.eval_dataset = self.train_tokenized["test"],
-        #self.trainer = Trainer(
-        #    model = self.model,
-        #    args = self.training_args,
-        #    train_dataset = self.train_tokenized["train"],
-        #    eval_dataset = self.train_tokenized["test"],
-        #    tokenizer = self.tokenizer,
-        #    data_collator = self.data_collator,
-        #    compute_metrics = self.compute_metrics,
-        #)
+        #self.trainer.train_dataset = self.train_tokenized["train"],
+        #self.trainer.eval_dataset = self.train_tokenized["test"],
+        # TODO: initialize new Trainer params based on ones specified in init so don't duplicate
+        self.trainer = Trainer(
+            model = self.model,
+            args = self.training_args,
+            train_dataset = self.train_tokenized["train"],
+            eval_dataset = self.train_tokenized["test"],
+            tokenizer = self.tokenizer,
+            data_collator = self.data_collator,
+            compute_metrics = self.compute_metrics,
+        )
         print('Training model...')
         res = self.trainer.train()
         self.trainer.save_metrics('all', res.metrics)

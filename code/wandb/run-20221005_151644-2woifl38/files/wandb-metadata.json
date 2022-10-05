@@ -1,0 +1,26 @@
+{
+    "os": "Linux-5.15.0-46-generic-x86_64-with-glibc2.31",
+    "python": "3.9.13",
+    "heartbeatAt": "2022-10-05T19:16:45.592309",
+    "startedAt": "2022-10-05T19:16:44.884618",
+    "docker": null,
+    "gpu": "NVIDIA RTX A6000",
+    "gpu_count": 2,
+    "cpu_count": 20,
+    "cuda": null,
+    "args": [
+        "config/bert.yaml"
+    ],
+    "state": "running",
+    "program": "/home/mamille3/white_supremacist_lang/code/main.py",
+    "codePath": "code/main.py",
+    "git": {
+        "remote": "https://github.com/michaelmilleryoder/white_supremacist_lang.git",
+        "commit": "07682c8fe0a31dd39c4abbdd6a90344bd8fd7a4c"
+    },
+    "email": "yoder@cs.cmu.edu",
+    "root": "/home/mamille3/white_supremacist_lang",
+    "host": "multivac.isri.cmu.edu",
+    "username": "mamille3",
+    "executable": "/home/mamille3/white_supremacist_lang/conda_env/bin/python"
+}

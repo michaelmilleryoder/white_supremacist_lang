@@ -124,8 +124,9 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3epochs_annotated_test
-  train: False
+  #name: 3epochs_annotated_test
+  name: ws_neutral
+  train: True
   test: True
   train_pos: white_supremacist_train
   train_neg: neutral_train
@@ -133,4 +134,5 @@ experiment: # define experiments where train particular classifiers on particula
   test_by_dataset: True # whether to give evaluations for each dataset separately in the test corpus
   classifier: 
     type: bert
-    load: '../output/bert/checkpoint-778326' # Null to train a new model from scratch, or a path to the model to load
+    load: Null # Null to train a new model from scratch, or a path to the model to load
+    #load: '../output/bert/checkpoint-778326' # Null to train a new model from scratch, or a path to the model to load
