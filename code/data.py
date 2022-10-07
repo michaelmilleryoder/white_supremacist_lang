@@ -41,17 +41,17 @@ def ref_corpus_year_count(ref_corpus):
 class Dataset:
     """ Superclass for storing data and attributes of datasets """
 
-    #@classmethod
-    #def all_subclasses(cls):
-    #    """ Return all subclasses of the class, as deep as they go (recursive) """
-    #    return set(cls.__subclasses__()).union(
-    #        [s for c in cls.__subclasses__() for s in all_subclasses(c)])
+    @classmethod
+    def all_subclasses(cls):
+        """ Return all subclasses of the class, as deep as they go (recursive) """
+        return set(cls.__subclasses__()).union(
+            [s for c in cls.__subclasses__() for s in c.all_subclasses()])
 
     def __new__(cls, name, source, domain, load_paths, ref_corpus=None):
         """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
-        subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
-        #subclass_map = {subclass.__name__: subclass for subclass in all_subclasses(cls)}
+        #subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
+        subclass_map = {subclass.__name__: subclass for subclass in cls.all_subclasses()}
         #subclass = subclass_map.get(subclass_name.split('_')[0], cls)
         subclass = subclass_map.get(subclass_name, cls)
         instance = super(Dataset, subclass).__new__(subclass)
@@ -569,4 +569,49 @@ class Siegel2021Dataset(Dataset):
         tokenizer = TweetTokenizer(strip_handles=True)
         self.data['text'] = [process_tweet_text(text, tokenizer) for text in self.data['text']]
         self.data['label'] = self.data['white_nationalism'].map(lambda x: 1 if x=='yes' else 0)
+        self.uniform_format()
+
+
+class Siegel2021_white_nationalist_onlyDataset(Siegel2021Dataset):
+    """ Tweets annotated for white nationalism from Siegel+ 2021 paper.
+        Only keep white nationalist tweets that are not marked hate speech as positive examples
+    """
+
+    def load(self):
+        super().load()
+
+        # Load tweets labeled for hate speech 
+        hs = pd.read_csv(self.load_paths[1])
+        
+        # Get hate speech annotations for white nationalist examples
+        hs_matches = hs[hs.text.isin(self.data.query('white_nationalism == "yes"').text)]
+        match_vals = hs_matches.groupby('text').agg({'hatespeech': lambda x: x[x=='yes'].count()/len(x)})
+        hs_examples = match_vals.query('hatespeech >= 0.5')
+        
+        # Remove white nationalist examples that are marked hate speech
+        self.data = self.data[~self.data.text.isin(hs_examples.index)]
+
+
+class Adl_heatmapDataset(Dataset):
+    """ Offline propaganda from ADL HEATMap dataset """
+
+    def load(self):
+        # Load quotes (already extracted from event descriptions)
+        quotes = pd.read_csv(self.load_paths[0])
+        quotes['timestamp'] = pd.to_datetime(quotes.date, format='%m/%d/%y', errors='coerce', utc=True).fillna(
+                pd.to_datetime(quotes.date, format='%y-%b', errors='coerce', utc=True))
+
+        # Filter to quotes from groups with white supremacist ideologies
+        incidents = pd.read_csv(self.load_paths[1])
+        incidents['timestamp'] = pd.to_datetime(incidents.date, utc=True)
+
+        merged = pd.merge(quotes, incidents, how='left', on=['description', 'city', 'timestamp'])
+        self.data = merged[merged['ideology']== 'Right Wing (White Supremacist)']
+        
+        # Remove duplicates
+        self.data = self.data.drop_duplicates(subset='quote').reset_index(drop=True)
+
+    def process(self):
+        self.data['text'] = self.data['quote'].map(tokenize_lowercase)
+        self.data['label'] = 1 # all labeled as white supremacist
         self.uniform_format()

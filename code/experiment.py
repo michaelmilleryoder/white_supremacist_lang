@@ -30,7 +30,7 @@ class Experiment:
         self.test_by_dataset = test_by_dataset
         self.clf = None
         if classifier['type'] == 'bert':
-            self.clf = BertClassifier(classifier['load'], self.name)
+            self.clf = BertClassifier(self.name, self.do_train, load=classifier['load'])
         
     def run(self):
         if self.do_train:

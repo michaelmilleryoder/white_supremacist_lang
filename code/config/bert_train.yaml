@@ -109,7 +109,7 @@ corpora:
     ref_corpus_name: 'white_supremacist_train'
 
   annotated_test: # test sets human-annotated for white supremacy
-    create: True
+    create: False
     datasets:
       - name: alatawi2021
         source: twitter

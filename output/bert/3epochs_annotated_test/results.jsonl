@@ -1,0 +1,3 @@
+{"dataset":"alatawi2021","f1":0.6954296161,"precision":0.5816513761,"recall":0.8645454545,"accuracy":0.5832916458}
+{"dataset":"siegel2021","f1":0.5874799358,"precision":0.4206896552,"recall":0.9734042553,"accuracy":0.5901116427}
+{"dataset":"siegel2021_white_nationalist_only","f1":0.4728033473,"precision":0.3130193906,"recall":0.9658119658,"accuracy":0.5467625899}

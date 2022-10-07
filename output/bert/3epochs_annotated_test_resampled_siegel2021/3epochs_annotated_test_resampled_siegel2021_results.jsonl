@@ -1,0 +1,2 @@
+{"dataset":"alatawi2021","f1":0.6954296161,"precision":0.5816513761,"recall":0.8645454545,"accuracy":0.5832916458}
+{"dataset":"siegel2021","f1":0.6,"precision":0.4336492891,"recall":0.9734042553,"accuracy":0.6108452951}

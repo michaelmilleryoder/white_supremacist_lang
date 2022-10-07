@@ -109,7 +109,7 @@ corpora:
     ref_corpus_name: 'white_supremacist_train'
 
   annotated_test: # test sets human-annotated for white supremacy
-    create: True
+    create: False
     datasets:
       - name: alatawi2021
         source: twitter
@@ -122,6 +122,22 @@ corpora:
         load_paths:
           - '../data/siegel2021/white_nationalist_training_data.csv'
           - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: siegel2021_white_nationalist_only
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+
+  domain_test: # out-of-domain evaluations
+    create: True
+    datasets:
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_quotes.csv'
+          - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
     
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
