@@ -536,11 +536,37 @@ class Alatawi2021Dataset(Dataset):
 
 
 class Siegel2021Dataset(Dataset):
-    """ Tweets annotated for white nationalism from Siegel+ 2021 paper """
+    """ Tweets annotated for white nationalism from Siegel+ 2021 paper.
+        White nationalist tweets are paired with negative examples marked as not 
+        containing white nationalism or hate speech 
+    """
+
+    def load(self):
+        # Load tweets labeled for white nationalism and for hate speech
+        wn = pd.read_csv(self.load_paths[0], index_col=0)
+        hs = pd.read_csv(self.load_paths[1])
+
+        # Remove duplicates of both text and annotation cols
+        filtered_wn = wn.drop_duplicates(keep='first').copy()
+        # Remaining duplicates are ones with disagreeing annotations. Assign them 'yes' since at least one was annotated as such
+        filtered_wn.loc[filtered_wn.duplicated(['text'], keep=False), 'white_nationalism_total'] = 'yes'
+        filtered_wn.drop_duplicates(keep='first', inplace=True)
+
+        # Remove all duplicates from hate speech (including disagreements, since will be sampling this data anyway)
+        hs_nodups = hs.drop_duplicates(keep=False)
+        # Remove any white nationalist examples from hate speech set
+        hs_nodups = hs_nodups[~hs_nodups.text.isin(wn.text)]
+
+        # Pair white supremacist tweets with non-hate speech
+        n_wn = len(filtered_wn.query('white_nationalism_total == "yes"'))
+        self.data = pd.concat([
+            filtered_wn.query('white_nationalism_total == "yes"').rename(columns={'white_nationalism_total': 'white_nationalism'}),
+            hs_nodups.query('hatespeech == "no"').rename(columns={'hatespeech': 'white_nationalism'}).sample(round(n_wn*7/3)),
+        ]).sample(frac=1)
 
     def process(self):
         """ Process data for evaluating classifiers based on other datasets. """
         tokenizer = TweetTokenizer(strip_handles=True)
         self.data['text'] = [process_tweet_text(text, tokenizer) for text in self.data['text']]
-        self.data['label'] = self.data['white_nationalism_total'].map(lambda x: 1 if x=='yes' else 0)
+        self.data['label'] = self.data['white_nationalism'].map(lambda x: 1 if x=='yes' else 0)
         self.uniform_format()

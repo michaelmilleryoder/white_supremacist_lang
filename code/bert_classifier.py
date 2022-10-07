@@ -15,10 +15,12 @@ import numpy as np
 
 class BertClassifier:
 
-    def __init__(self, load=None):
+    def __init__(self, exp_name: str, load=None):
         """ Args:
+                exp_name: name of the experiment (for the output filename)
                 load: None to train a new model from scratch, or a path to the model to load and further train
         """
+        self.exp_name = exp_name
         if load is None:
             self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
             self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
@@ -108,11 +110,10 @@ class BertClassifier:
         """ Preprocess HuggingFace dataset """
         return self.tokenizer(examples["text"], truncation=True)
 
-    def evaluate(self, test: pd.DataFrame, exp_name: str, test_by_dataset=False):
+    def evaluate(self, test: pd.DataFrame, test_by_dataset=False):
         """ Evaluate the model on an unseen dataset.
             Args:
                 test: pandas DataFrame of unseen data, containing 'text' and 'label' columns
-                exp_name: name of the experiment (for the output filename)
                 test_by_dataset: whether to evaluate each dataset separately in the test corpus
         """
         print("Evaluating on test corpus...")

@@ -121,11 +121,17 @@ corpora:
         domain: tweet
         load_paths:
           - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
     
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  run: False
+  name: Null
+  train: False
+  test: False
   train_pos: white_supremacist_train
   train_neg: neutral_train
-  test: annotated_test
-  classifier: bert
+  test_corpus: annotated_test
+  test_by_dataset: True # whether to give evaluations for each dataset separately in the test corpus
+  classifier: 
+    type: bert
+    load: Null # Null to train a new model from scratch, or a path to the model to load
