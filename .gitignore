@@ -8,3 +8,4 @@ models/
 logs/
 checkpoint-*
 wandb/
+*.bin
