@@ -129,6 +129,7 @@ def process_chat(text, tokenizer):
         res = text
     return ' '.join(tokenizer.tokenize(res)).lower()
 
+
 def load_now(fpath):
     """ Load NOW article files into a pandas DataFrame """
     fname = os.path.basename(fpath)
@@ -145,9 +146,19 @@ def load_now(fpath):
         articles = f.read().splitlines()
     return pd.DataFrame({'article': articles, 'year': year})
 
+
 def process_now(inp):
     """ Preprocess NOW articles """
     text = re.sub(r'@@\d+ ', '', inp)
     text = re.sub(r'<\w+>', '', text)
     text = text.replace('@ @ @ @ @ @ @ @ @ @ ', '')
     return text.lower()
+
+
+def process_rieger2021(text):
+    """ Preprocess Rieger+ 2021 4chan, 8chan, t_D data """
+    # Remove special characters
+    text = remove_special(str(text))
+    # Tokenize
+    text = tokenize_lowercase(text)
+    return text

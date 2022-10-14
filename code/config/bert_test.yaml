@@ -128,9 +128,15 @@ corpora:
         load_paths:
           - '../data/siegel2021/white_nationalist_training_data.csv'
           - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
 
   domain_test: # out-of-domain evaluations
-    create: True
+    create: False
     datasets:
       - name: adl_heatmap
         source: adl_heatmap
@@ -139,14 +145,23 @@ corpora:
           - '../data/adl_heatmap/adl_quotes.csv'
           - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
 
+  bias_test:
+    create: True
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3epochs_domain_test
+  name: ws_neutral_bias_test
   train: False
   test: True
   train_pos: white_supremacist_train
   train_neg: neutral_train
-  test_corpus: domain_test
+  test_corpus: bias_test
   test_by_dataset: True # whether to give evaluations for each dataset separately in the test corpus
   classifier: 
     type: bert

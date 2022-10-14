@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
         process_tweet, process_tweet_text, process_article, process_reddit, process_chat, 
-        load_now, process_now)
+        load_now, process_now, process_rieger2021)
 
 
 def ref_corpus_year_count(ref_corpus):
@@ -614,4 +614,108 @@ class Adl_heatmapDataset(Dataset):
     def process(self):
         self.data['text'] = self.data['quote'].map(tokenize_lowercase)
         self.data['label'] = 1 # all labeled as white supremacist
+        self.uniform_format()
+
+
+class Rieger2021Dataset(Dataset):
+    """ Annotated data from Rieger+ 2021 paper """
+
+    def load(self):
+        # Load annotations
+        annotations = pd.read_csv(self.load_paths[0], na_values=-99)
+
+        # Rename annotations to English (from codebook)
+        en_cols = ['id', 'src', 'spam', 'pers_ins', 'pers_ins_tar1', 'pers_ins_ref1', 'pers_ins_tar2', 'pers_ins_ref2', 'gen_ins',
+                    'gen_ins_tar1', 'gen_ins_tar2', 
+                    'viol', 'viol_tar', 'stereo', 'stereo2', 'disinfo', 'disinfo_ref', 'ingroup', 'ih_ide'] + \
+                    annotations.columns.tolist()[19:]
+        annotations.columns = en_cols
+
+        # Load text
+        texts = pd.read_excel(self.load_paths[1], sheet_name='Tabelle5')
+        texts.drop(columns=[col for col in texts.columns if col.startswith('Unnamed')], inplace=True)
+
+        # Merge in text
+        data = pd.merge(texts, annotations, left_on='CommentID', right_on='id')
+
+        data = data.set_index('CommentID').drop(columns=['id', 'src', 'filter_$'])
+
+        data['inhuman_ideology'] = data.ih_ide.astype('category').cat.rename_categories(
+            {0: 'none discernible', 1: 'National Socialist', 2: 'white supremacy/white ethnostate'})
+        data['inhuman_ideology'].value_counts()
+
+        # Replace numeric codes with names
+        demo_categories = {
+            1: 'ethnicity',
+            2: 'religion',
+            3: 'country_of_origin',
+            4: 'gender',
+            5: 'political_views',
+            6: 'sexual_orientation',
+            7: 'disability',
+            8: 'gender_identity',
+            9: 'other',
+            -9: 'undetermined'
+        }
+        identities = {
+            1: 'black people',
+            2: 'muslims',
+            3: 'jews',
+            4: 'lgbtq',
+            5: 'migrants',
+            6: 'people_with_disabilities',
+            7: 'social_elites_media',
+            8: 'political_opponents',
+            9: 'latin_americans',
+            10: 'women',
+            11: 'criminals',
+            12: 'asians',
+            13: 'other',
+            -9: 'undetermined',
+        }
+
+        ref_cols = ['pers_ins_ref1',
+                   'pers_ins_ref2']
+        tar_cols = ['gen_ins_tar1',
+                    'gen_ins_tar2',
+                    'viol_tar',
+                    'disinfo_ref',
+                   ]
+
+        for col in ref_cols:
+            data[col] = data[col].astype('category').cat.rename_categories(demo_categories)
+        for col in tar_cols:
+            data[col] = data[col].astype('category').cat.rename_categories(identities)
+
+        data['Source'] = data.Source.astype('category').cat.rename_categories({
+            1: 'td',
+            2: '4chan_pol',
+            3: '8chan_pol',
+        })
+
+        data['white_supremacist'] = data['inhuman_ideology'].isin(['white supremacy/white ethnostate', 'National Socialist'])
+
+        # Select positive and negative examples
+        self.data = data.query('white_supremacist or (gen_ins==0 and viol==0 and pers_ins==0 and not white_supremacist)')
+
+    def process(self):
+        # Remove NaNs of Text
+        self.data = self.data.dropna(subset='Text')
+        self.data['text'] = self.data['Text'].map(process_rieger2021)
+        self.data = self.data[self.data['text'] != '']
+        self.data['label'] = self.data['white_supremacist'].astype(int)
+        self.uniform_format()
+
+
+class Hatecheck_identity_nonhateDataset(Dataset):
+    """ Data selected from HateCheck to test lexical bias against marginalized identities """
+
+    def load(self):
+        self.data = pd.read_csv(self.load_paths[0], index_col=0)
+        selected_cols = ['ident_neutral_nh', 'ident_pos_nh']
+        self.data = self.data.query('functionality==@selected_cols')
+
+    def process(self):
+        self.data['text'] = self.data.test_case.map(tokenize_lowercase)
+        self.data['label'] = 0
         self.uniform_format()
