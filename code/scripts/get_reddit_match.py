@@ -9,15 +9,28 @@ import numpy as np
 import datetime
 from tqdm import tqdm
 import pdb
+import logging
 
 
 def main():
 
     api = PushshiftAPI()
 
+    # PushShift logging
+    #handler = logging.StreamHandler()
+    #handler.setLevel(logging.INFO)
+    #logger = logging.getLogger('psaw')
+    #logger.setLevel(logging.INFO)
+    ## To stop getting output, logger.setLevel(logging.ERROR)
+    #logger.addHandler(handler)
+
+    # Settings
+    subs = ['BlackLivesMatter', 'racism', 'StopAntiAsianRacism']
+    out_dirpath = '../../data/antiracist/reddit_comments/'
+
     # Load white supremacist dataset to count posts over time
     print('Loading (training) white supremacist dataset to get post counts over time...')
-    path = '../../data/corpora/white_supremacist_corpus.json'
+    path = '../../data/corpora/white_supremacist_train_corpus.json'
     ws_data = pd.read_json(path, orient='table')
 
     # Select forum data, Group by year
@@ -40,10 +53,11 @@ def main():
     #}
 
     # Scrape subreddit
-    for subreddit in ['politics', 'Europe', 'USA', 'AskAnAmerican']:
-        outpath = f'../../data/neutral/reddit_comments/{subreddit}_subreddit_comments.json'
+    #for subreddit in ['politics', 'Europe', 'USA', 'AskAnAmerican']:
+    for subreddit in subs:
+        outpath = os.path.join(out_dirpath, f'{subreddit}.json')
         if not os.path.exists(os.path.dirname(outpath)):
-            pdb.set_trace("No dir")
+            tqdm.write("No dir")
         print(subreddit)
         dfs = []
         post_filter_list = ['id', 'selftext', 'title', 'author', 'created_utc', 'num_comments', 'score', 'brand_safe', 'over_18', 'domain', 'url', 'permalink']

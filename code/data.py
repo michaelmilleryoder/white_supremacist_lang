@@ -412,7 +412,7 @@ class Reddit_matchDataset(Dataset):
         #self.data['year'] = self.data.created_utc.dt.year
 
     def process(self):
-        """ Sample data to match forum data in white supremacist data.
+        """ Sample data to match forum data in white supremacist data by year (random across subreddits).
             Process data for combining with other datasets in neutral corpus.
         """
         self.data = self.data.groupby(self.data.created_utc.dt.year).apply(

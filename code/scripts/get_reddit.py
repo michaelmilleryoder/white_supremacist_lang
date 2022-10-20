@@ -15,7 +15,7 @@ import logging
 def main():
 
     # Settings
-    subs = ['BlackLivesMatter', 'racism', 'StopAntiAsianRacism']
+    subs = ['racism']
 
     api = PushshiftAPI()
 
@@ -29,7 +29,7 @@ def main():
 
     # Scrape subreddit
     for subreddit in subs:
-        outpath = f'../../data/antiracist/reddit_comments/{subreddit}_subreddit_comments.json'
+        outpath = f'../../data/antiracist/reddit_comments/{subreddit}.json'
         if not os.path.exists(os.path.dirname(outpath)):
             pdb.set_trace("No dir")
         print(subreddit)
@@ -42,7 +42,7 @@ def main():
         #        subreddit=subreddit, after=row.begin, before=row.end, filter=post_filter_list, limit=int(row.post_count*.7))]
         #comments = [comment.d_ for comment in api.search_comments(
         #        subreddit=subreddit, after=row.begin, before=row.end, filter=comment_filter_list, limit=int(row.post_count*.7))]
-        comments = [comment.d_ for comment in api.search_comments(subreddit=subreddit, filter=comment_filter_list, limit=debug_limit)]
+        comments = [comment.d_ for comment in api.search_comments(subreddit=subreddit, filter=comment_filter_list)]
         # Remove deleted posts
         #if len(posts) == 0 and len(comments) == 0:
         if len(comments) == 0:
@@ -57,7 +57,7 @@ def main():
         print(f'Finished, saving full dataset out to {outpath}')
         #data = pd.concat(dfs).reset_index(drop=True)
         data = comments_df
-        print(len(data))
+        print(f'{len(data)} comments scraped')
         data.to_json(outpath, orient='table', indent=4)
 
 
