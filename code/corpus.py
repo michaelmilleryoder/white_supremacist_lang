@@ -19,14 +19,14 @@ class Corpus:
         Load, process these datasets into a uniform format for building classifiers
     """
 
-    def __init__(self, name: str, create: bool, datasets: list = [], ref_corpus_name: str = None):
+    def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
                         and saving to self.fpath.
                         If False, will attempt to load the corpus from self.fpath
                 datasets: list of dictionaries with names and associated loading paths for datasets
-                ref_corpus_name: the name of the reference corpus that is used to construct this corpus. 
+                ref_corpora: a list of the names of any reference corpora that are used to construct this corpus. 
                         Will be loaded from disk (must already be saved out) if create is True
         """
         self.name = name
@@ -35,16 +35,18 @@ class Corpus:
         self.fpath = self.base_fpath.format(self.name)
         self.tmp_fpath = self.base_tmp_fpath.format(self.name) # pickling for faster loading
         self.create = create
-        self.ref_corpus_name = ref_corpus_name
-        ref_corpus = None
-        if self.ref_corpus_name is not None and self.create:
-            # Load reference corpus
-            #ref_corpus_fpath = self.base_fpath.format(self.ref_corpus_name)
-            ref_corpus_fpath = self.base_tmp_fpath.format(self.ref_corpus_name)
-            tqdm.write("\tLoading reference corpus...")
-            ref_corpus = self.load_corpus(ref_corpus_fpath)
+        self.ref_corpora = ref_corpora
+        ref_corpora = None
+        if self.ref_corpora is not None and self.create:
+            # Load reference corpora
+            ref_corpora = {}
+            for corpus_name in self.ref_corpora:
+                #ref_corpus_fpath = self.base_fpath.format(self.ref_corpus_name)
+                ref_corpus_fpath = self.base_tmp_fpath.format(self.corpus_name)
+                tqdm.write("\tLoading reference corpora...")
+                ref_corpora[corpus_name] = self.load_corpus(ref_corpus_fpath)
         self.datasets = [Dataset(
-                ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpus=ref_corpus) for ds in datasets]
+                ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpora=ref_corpora) for ds in datasets]
         self.data = None
 
     def load(self):

@@ -47,7 +47,7 @@ class Dataset:
         return set(cls.__subclasses__()).union(
             [s for c in cls.__subclasses__() for s in c.all_subclasses()])
 
-    def __new__(cls, name, source, domain, load_paths, ref_corpus=None):
+    def __new__(cls, name, source, domain, load_paths, ref_corpora=None):
         """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
         #subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
@@ -57,13 +57,14 @@ class Dataset:
         instance = super(Dataset, subclass).__new__(subclass)
         return instance
 
-    def __init__(self, name, source, domain, load_paths, ref_corpus=None):
+    def __init__(self, name, source, domain, load_paths, ref_corpora=None):
         """ Args:
                 name: dataset name
                 source: source platform
                 domain: discourse type of the source (tweet, chat, forum, long-form (article or book))
                 load_paths: list of arguments for loading the datasets (like file paths)
-                ref_corpus: a dataframe of another corpus to use as a reference (for sampling a similar size, e.g.)
+                ref_corpora: a dict with keys as corpora names and values dataframes of other corpora 
+                    to use in assembling this dataset
         """
         self.name = name
         self.source = source
@@ -438,6 +439,34 @@ class Reddit_matchDataset(Dataset):
     #    print(post_counts.to_string())
 
     #    super().print_stats()
+
+
+class Reddit_antiracistDataset(Dataset):
+    """ Antiracist Reddit data, filled in with neutral data to match the volume of forum data in white supremacy dataset """
+
+    def load(self):
+        """ Load prescraped Reddit data (get_reddit.py) """
+        fpaths = sorted([fname for fname in os.listdir(self.load_paths[0]) if fname.endswith('.json')])
+        dfs = []
+        for fname in tqdm(fpaths, ncols=80):
+            # print(fname)
+            fpath = os.path.join(self.load_paths[0], fname)
+            sub = pd.read_json(fpath, orient='table')
+            subreddit = fname.split('_')[0]
+            dfs.append(sub.assign(subreddit=subreddit.lower()))
+        self.data = pd.concat(dfs)
+        #self.data['year'] = self.data.created_utc.dt.year
+
+    def process(self):
+        """ Sample data to match forum data in white supremacist data by year (random across subreddits).
+            Process data for combining with other datasets in neutral corpus.
+        """
+        self.data = self.data.groupby(self.data.created_utc.dt.year).apply(
+                lambda group: group.sample(self.lookup[('post_count', 'count')][group.name])).reset_index(drop=True)
+        with Pool(self.n_jobs) as p:
+            self.data['text'] = list(tqdm(p.imap(
+                    process_reddit, self.data['body']), total=len(self.data), ncols=80))
+        self.uniform_format(timestamp_col='created_utc')
 
 
 class Discord_matchDataset(Dataset):

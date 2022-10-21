@@ -106,7 +106,31 @@ corpora:
         domain: tweet
         load_paths: 
           - '/storage2/mamille3/white_supremacist_lang/data/neutral/twitter/'
-    ref_corpus_name: 'white_supremacist_train'
+    ref_corpora: 
+      - 'white_supremacist_train'
+
+  antiracist_train:
+    create: True
+    datasets:
+      - name: reddit_antiracist
+        source: reddit
+        domain: forum
+        load_paths: 
+          - '../data/antiracist/reddit_comments'
+      #- name: twitter_antiracist
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths: 
+      #    - '../data/antiracist/twitter/'
+      #- name: article_antiracist
+      #  source: news
+      #  domain: long-form
+      #  load_paths: 
+      #    - '/storage2/mamille3/data/news/now2010-2021/text'
+    ref_corpora: 
+      - 'white_supremacist_train'
+      - 'neutral_train'
+
 
   annotated_test: # test sets human-annotated for white supremacy
     create: False
