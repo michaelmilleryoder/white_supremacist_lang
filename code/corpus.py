@@ -41,9 +41,8 @@ class Corpus:
             # Load reference corpora
             ref_corpora = {}
             for corpus_name in self.ref_corpora:
-                #ref_corpus_fpath = self.base_fpath.format(self.ref_corpus_name)
-                ref_corpus_fpath = self.base_tmp_fpath.format(self.corpus_name)
-                tqdm.write("\tLoading reference corpora...")
+                ref_corpus_fpath = self.base_tmp_fpath.format(corpus_name)
+                tqdm.write(f"\tLoading reference corpora {corpus_name}...")
                 ref_corpora[corpus_name] = self.load_corpus(ref_corpus_fpath)
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpora=ref_corpora) for ds in datasets]
@@ -57,7 +56,7 @@ class Corpus:
                 print(f"\tLoading and processing {dataset.name} ({dataset.source})...")
                 dataset.load()
                 dataset.process()
-                if self.ref_corpus_name is not None:
+                if self.ref_corpora is not None:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs)

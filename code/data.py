@@ -21,11 +21,12 @@ from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4ch
         load_now, process_now, process_rieger2021)
 
 
-def ref_corpus_year_count(ref_corpus):
-    """ Returns a table of post and word counts per year in a reference corpus (for matching samples) 
-        ref_corpus: pandas DataFrame of data used as a reference corpus
+def corpus_year_count(corpus):
+    """ Returns a table of post and word counts per year in a corpus (often for matching samples) 
+        corpus: pandas DataFrame of data used as a corpus. Must have a timestamp datetime column
     """
-    yearly = ref_corpus.groupby(by=ref_corpus.timestamp.dt.year).agg({
+    corpus['word_count'] = corpus.text.str.split().str.len()
+    yearly = corpus.groupby(by=corpus.timestamp.dt.year).agg({
         'text': 'count',
         'word_count': ['sum', 'mean'],
         })
@@ -71,11 +72,12 @@ class Dataset:
         self.domain = domain
         #self.loader = getattr(load_process_dataset, f'{self.name.capitalize()}Loader')
         self.load_paths = load_paths
-        self.ref_corpus = ref_corpus
-        if self.ref_corpus is not None:
-            self.ref_corpus = ref_corpus.query(f'domain=="{domain}"').copy()
-            self.ref_corpus['word_count'] = self.ref_corpus.text.str.split().str.len()
-            self.lookup = ref_corpus_year_count(self.ref_corpus)
+        self.ref_corpora = ref_corpora
+        if self.ref_corpora is not None:
+            self.lookup = {}
+            for name, corpus in self.ref_corpora.items():
+                self.ref_corpora[name] = corpus.query(f'domain=="{domain}"').copy()
+                self.lookup[name] = corpus_year_count(self.ref_corpora[name])
         self.n_jobs = 20 # number of processes for multiprocessing of data
         self.data = pd.DataFrame()
         #cls.get_subclass()
@@ -117,9 +119,11 @@ class Dataset:
 
         # Comparison to matching white supremacist data
         self.data['word_count'] = self.data.text.str.split().str.len()
-        print(f'\t\tMatching white supremacist corpus word count mean: {self.ref_corpus.word_count.mean()}')
+        print('\t\tMatching white supremacist corpus word count mean: '
+                f'{self.ref_corpora["white_supremacist_train"].word_count.mean()}')
         print(f'\t\tNeutral word count mean: {self.data.word_count.mean()}')
-        print(f'\t\tMatching white supremacist corpus word count sum: {self.ref_corpus.word_count.sum()}')
+        print('\t\tMatching white supremacist corpus word count sum: '
+                f'{self.ref_corpora["white_supremacist_train"].word_count.sum()}')
         print(f'\t\tNeutral word count sum: {self.data.word_count.sum()}')
 
 
@@ -396,11 +400,11 @@ class Pruden2022Dataset(Dataset):
         self.uniform_format(timestamp_col='year', format='%Y')
 
 
-class Reddit_matchDataset(Dataset):
-    """ Neutral (non-white supremacist) Reddit data that matches forum data in white supremacy dataset """
+class RawReddit(Dataset):
+    """ Parent class for loading and processing data scraped from Reddit through PushShift. """
 
     def load(self):
-        """ Load prescraped Reddit data (get_reddit.py) """
+        """ Load prescraped Reddit data (from get_reddit.py) """
         fpaths = sorted([fname for fname in os.listdir(self.load_paths[0]) if fname.endswith('.json')])
         dfs = []
         for fname in tqdm(fpaths, ncols=80):
@@ -410,7 +414,10 @@ class Reddit_matchDataset(Dataset):
             subreddit = fname.split('_')[0]
             dfs.append(sub.assign(subreddit=subreddit.lower()))
         self.data = pd.concat(dfs)
-        #self.data['year'] = self.data.created_utc.dt.year
+
+
+class Reddit_matchDataset(RawReddit):
+    """ Neutral (non-white supremacist) Reddit data that matches forum data in white supremacy dataset """
 
     def process(self):
         """ Sample data to match forum data in white supremacist data by year (random across subreddits).
@@ -441,32 +448,26 @@ class Reddit_matchDataset(Dataset):
     #    super().print_stats()
 
 
-class Reddit_antiracistDataset(Dataset):
+class Reddit_antiracistDataset(RawReddit):
     """ Antiracist Reddit data, filled in with neutral data to match the volume of forum data in white supremacy dataset """
-
-    def load(self):
-        """ Load prescraped Reddit data (get_reddit.py) """
-        fpaths = sorted([fname for fname in os.listdir(self.load_paths[0]) if fname.endswith('.json')])
-        dfs = []
-        for fname in tqdm(fpaths, ncols=80):
-            # print(fname)
-            fpath = os.path.join(self.load_paths[0], fname)
-            sub = pd.read_json(fpath, orient='table')
-            subreddit = fname.split('_')[0]
-            dfs.append(sub.assign(subreddit=subreddit.lower()))
-        self.data = pd.concat(dfs)
-        #self.data['year'] = self.data.created_utc.dt.year
 
     def process(self):
         """ Sample data to match forum data in white supremacist data by year (random across subreddits).
             Process data for combining with other datasets in neutral corpus.
         """
-        self.data = self.data.groupby(self.data.created_utc.dt.year).apply(
-                lambda group: group.sample(self.lookup[('post_count', 'count')][group.name])).reset_index(drop=True)
         with Pool(self.n_jobs) as p:
             self.data['text'] = list(tqdm(p.imap(
                     process_reddit, self.data['body']), total=len(self.data), ncols=80))
         self.uniform_format(timestamp_col='created_utc')
+        data_yearly = corpus_year_count(self.data)
+        neutral_sampled = self.ref_corpora['neutral_train'].groupby(self.ref_corpora['neutral_train'].timestamp.dt.year).apply(
+            lambda group: group.sample(
+                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] - \
+                    data_yearly[('post_count', 'count')][group.name]
+            )).reset_index(drop=True)
+        # Add antiracist + neutral
+        self.data = pd.concat([self.data, neutral_sampled]).sample(frac=1).reset_index(drop=True)
+        self.uniform_format() # To get new indexes
 
 
 class Discord_matchDataset(Dataset):
@@ -487,7 +488,7 @@ class Discord_matchDataset(Dataset):
         """
 
         # Sample to match the word count of white supremacist matching chat data
-        self.data = self.data.sample(int(self.ref_corpus.word_count.sum()/4.2)) 
+        self.data = self.data.sample(int(self.ref_corpora['white_supremacist_train'].word_count.sum()/4.2)) 
         # 4.2 is the average words/posts in the Discord data (see neutral_data.ipynb)
 
         # Process data
@@ -519,9 +520,9 @@ class News_matchDataset(Dataset):
             Process data for combining with other datasets in neutral corpus.
         """
         # Sample specific number of articles by year
-        self.data = self.data[self.data['year'].isin(self.lookup.index)].groupby('year').apply(
-                lambda group: group.sample(int(self.lookup.loc[group.name, ('post_count', 'count')]/3.5))).reset_index(
-                drop = True)
+        self.data = self.data[self.data['year'].isin(self.lookup['white_supremacist_train'].index)].groupby('year').apply(
+                lambda group: group.sample(int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]/3.5
+            ))).reset_index(drop = True)
         # 3.5 is approximately the number of articles to match the word count in white supremacist data
 
         # Process data
@@ -529,6 +530,9 @@ class News_matchDataset(Dataset):
             self.data['text'] = list(tqdm(p.imap(
                     process_now, self.data['article']), total=len(self.data), ncols=80))
         self.uniform_format(timestamp_col='year', format='%Y')
+
+
+class RawTwitter(Dataset):
 
 
 class Twitter_matchDataset(Dataset):

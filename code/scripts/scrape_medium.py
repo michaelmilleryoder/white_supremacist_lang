@@ -49,10 +49,10 @@ def get_articles(urls, start_url_idx, article_outpath):
     for url in tqdm(urls[start_url_idx:], ncols=100):
         try:
             response = requests.get(url)
-            if response.status_code in [404, 410]:
+            if response.status_code in [403, 404, 410]:
                 tqdm.write(f'{response.status_code} error, skipping {url}')
                 continue
-            elif response.status_code in [503, 520, 524]:
+            elif response.status_code in [500, 503, 520, 524]:
                 sleep_time = 30
                 tqdm.write(f'{response.status_code} error, waiting {sleep_time} seconds and then trying again')
                 time.sleep(sleep_time)
@@ -62,10 +62,13 @@ def get_articles(urls, start_url_idx, article_outpath):
                 title_search = soup.find('h1', class_='pw-post-title') 
                 if title_search is not None:
                     title = title_search.text
-                date_str = soup.find('p', class_='pw-published-date').text
-                date = dparser.parse(date_str)
+                date = None
+                date_search = soup.find('p', class_='pw-published-date')
+                if dat_search is not None:
+                    date_str = date_search.text
+                    date = dparser.parse(date_str).strftime('%Y-%m-%d')
                 paras = [p.text for p in soup.find_all('p', class_='pw-post-body-paragraph')]
-                outlines.append({'url': url, 'date': date.strftime('%Y-%m-%d'), 'title': title, 'text': '\n'.join([title] + paras).strip()})
+                outlines.append({'url': url, 'date': date, 'title': title, 'text': '\n'.join([title] + paras).strip()})
                 time.sleep(0.5)
             else: 
                 pdb.set_trace()

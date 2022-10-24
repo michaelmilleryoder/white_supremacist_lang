@@ -131,7 +131,6 @@ corpora:
       - 'white_supremacist_train'
       - 'neutral_train'
 
-
   annotated_test: # test sets human-annotated for white supremacy
     create: False
     datasets:
@@ -154,7 +153,7 @@ corpora:
           - '../data/siegel2021/hate_speech_training_data.csv'
 
   domain_test: # out-of-domain evaluations
-    create: True
+    create: False
     datasets:
       - name: adl_heatmap
         source: adl_heatmap
