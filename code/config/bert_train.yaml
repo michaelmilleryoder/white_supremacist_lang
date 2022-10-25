@@ -106,7 +106,30 @@ corpora:
         domain: tweet
         load_paths: 
           - '/storage2/mamille3/white_supremacist_lang/data/neutral/twitter/'
-    ref_corpus_name: 'white_supremacist_train'
+    ref_corpora: 
+      - 'white_supremacist_train'
+
+  antiracist_train:
+    create: False
+    datasets:
+      - name: reddit_antiracist
+        source: reddit
+        domain: forum
+        load_paths: 
+          - '../data/antiracist/reddit_comments'
+      - name: twitter_antiracist
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '../data/antiracist/twitter/'
+      #- name: article_antiracist
+      #  source: news
+      #  domain: long-form
+      #  load_paths: 
+      #    - '/storage2/mamille3/data/news/now2010-2021/text'
+    ref_corpora: 
+      - 'white_supremacist_train'
+      - 'neutral_train'
 
   annotated_test: # test sets human-annotated for white supremacy
     create: False
@@ -123,15 +146,36 @@ corpora:
           - '../data/siegel2021/white_nationalist_training_data.csv'
           - '../data/siegel2021/hate_speech_training_data.csv'
 
+  domain_test: # out-of-domain evaluations
+    create: False
+    datasets:
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_quotes.csv'
+          - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
+
+  bias_test:
+    create: False
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  #name: 3epochs_annotated_test
-  name: ws_neutral
+  name: ws_antiracist
   train: True
   test: True
   train_pos: white_supremacist_train
-  train_neg: neutral_train
-  test_corpus: annotated_test
+  train_neg: antiracist_train
+  test_corpora: 
+    - annotated_test
+    - domain_test
+    - bias_test
   test_by_dataset: True # whether to give evaluations for each dataset separately in the test corpus
   classifier: 
     type: bert

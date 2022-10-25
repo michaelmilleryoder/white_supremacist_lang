@@ -21,18 +21,23 @@ from tqdm import tqdm
 def main():
 
     # Settings
-    tag = 'white-supremacy'
+    tag = 'blacklivesmatter'
     url_outpath = f'../../data/antiracist/medium/{tag}_urls.txt'
     article_outpath = f'../../data/antiracist/medium/{tag}_articles.jsonl'
     start_year = 2010 # 2010 in white supremacist data
     start_month = 1
-    start_url_idx = 1113 # if starting partway through URLs
+    start_url_idx = 0 # put in an index if starting partway through URLs, otherwise 0
     override = True
+    capture_urls = True
+    limit = 17500   # if the tag has more articles than needed to match the count of white supremacist articles, 
+                    # give a number to stop collecting articles (chronologically from the start year and month)
 
     # Run
     #print("Getting article URLs...")
-    #urls = get_urls(tag, url_outpath, start_year, start_month, override)
-    urls = load_urls(url_outpath)
+    if capture_urls:
+        urls = get_urls(tag, url_outpath, start_year, start_month, override, limit)
+    else:
+        urls = load_urls(url_outpath)
     print("Getting article texts...")
     get_articles(urls, start_url_idx, article_outpath)
 
@@ -49,10 +54,10 @@ def get_articles(urls, start_url_idx, article_outpath):
     for url in tqdm(urls[start_url_idx:], ncols=100):
         try:
             response = requests.get(url)
-            if response.status_code in [403, 404, 410]:
+            if response.status_code >= 400 and response.status_code < 500:
                 tqdm.write(f'{response.status_code} error, skipping {url}')
                 continue
-            elif response.status_code in [500, 503, 520, 524]:
+            elif response.status_code >= 500 and response.status_code < 600:
                 sleep_time = 30
                 tqdm.write(f'{response.status_code} error, waiting {sleep_time} seconds and then trying again')
                 time.sleep(sleep_time)
@@ -64,12 +69,15 @@ def get_articles(urls, start_url_idx, article_outpath):
                     title = title_search.text
                 date = None
                 date_search = soup.find('p', class_='pw-published-date')
-                if dat_search is not None:
+                if date_search is not None:
                     date_str = date_search.text
                     date = dparser.parse(date_str).strftime('%Y-%m-%d')
                 paras = [p.text for p in soup.find_all('p', class_='pw-post-body-paragraph')]
-                outlines.append({'url': url, 'date': date, 'title': title, 'text': '\n'.join([title] + paras).strip()})
-                time.sleep(0.5)
+                quotes = [q.text for q in soup.find_all('blockquote')]
+                if len(paras) == 0 and len(quotes) == 0:
+                    continue
+                outlines.append({'url': url, 'date': date, 'title': title, 'text': '\n'.join([title] + paras + quotes).strip()})
+                time.sleep(0.3)
             else: 
                 pdb.set_trace()
         except Exception as e:
@@ -106,7 +114,7 @@ def extract_urls(articles):
     return article_urls
 
 
-def get_urls(tag, url_outpath, start_year, start_month, override):
+def get_urls(tag, url_outpath, start_year, start_month, override, limit=None):
     """ Search for URLs of articles that match the tag 
         Returns and saves a list of the URLs
     """
@@ -140,6 +148,12 @@ def get_urls(tag, url_outpath, start_year, start_month, override):
                             month_article_urls += extract_urls(articles)
                 all_urls += month_article_urls
                 f.write('\n'.join(month_article_urls) + '\n')
+                if limit is not None and len(all_urls) >= limit:
+                    tqdm.write(f"\nReached limit of {limit} URLs with {len(all_urls)} URLs saved")
+                    break
+            else:
+                continue
+            break
 
     print(f"Wrote URLs to {url_outpath}")
     return all_urls

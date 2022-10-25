@@ -42,7 +42,7 @@ class Corpus:
             ref_corpora = {}
             for corpus_name in self.ref_corpora:
                 ref_corpus_fpath = self.base_tmp_fpath.format(corpus_name)
-                tqdm.write(f"\tLoading reference corpora {corpus_name}...")
+                tqdm.write(f"\tLoading reference corpus {corpus_name}...")
                 ref_corpora[corpus_name] = self.load_corpus(ref_corpus_fpath)
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpora=ref_corpora) for ds in datasets]

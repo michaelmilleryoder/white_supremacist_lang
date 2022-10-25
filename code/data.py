@@ -72,10 +72,10 @@ class Dataset:
         self.domain = domain
         #self.loader = getattr(load_process_dataset, f'{self.name.capitalize()}Loader')
         self.load_paths = load_paths
-        self.ref_corpora = ref_corpora
-        if self.ref_corpora is not None:
+        self.ref_corpora = {}
+        if ref_corpora is not None:
             self.lookup = {}
-            for name, corpus in self.ref_corpora.items():
+            for name, corpus in ref_corpora.items():
                 self.ref_corpora[name] = corpus.query(f'domain=="{domain}"').copy()
                 self.lookup[name] = corpus_year_count(self.ref_corpora[name])
         self.n_jobs = 20 # number of processes for multiprocessing of data
@@ -121,10 +121,10 @@ class Dataset:
         self.data['word_count'] = self.data.text.str.split().str.len()
         print('\t\tMatching white supremacist corpus word count mean: '
                 f'{self.ref_corpora["white_supremacist_train"].word_count.mean()}')
-        print(f'\t\tNeutral word count mean: {self.data.word_count.mean()}')
+        print(f'\t\t{self.name} word count mean: {self.data.word_count.mean()}')
         print('\t\tMatching white supremacist corpus word count sum: '
                 f'{self.ref_corpora["white_supremacist_train"].word_count.sum()}')
-        print(f'\t\tNeutral word count sum: {self.data.word_count.sum()}')
+        print(f'\t\t{self.name} word count sum: {self.data.word_count.sum()}')
 
 
 class Qian2018Dataset(Dataset):
@@ -424,7 +424,8 @@ class Reddit_matchDataset(RawReddit):
             Process data for combining with other datasets in neutral corpus.
         """
         self.data = self.data.groupby(self.data.created_utc.dt.year).apply(
-                lambda group: group.sample(self.lookup[('post_count', 'count')][group.name])).reset_index(drop=True)
+                lambda group: group.sample(
+                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
         with Pool(self.n_jobs) as p:
             self.data['text'] = list(tqdm(p.imap(
                     process_reddit, self.data['body']), total=len(self.data), ncols=80))
@@ -460,11 +461,10 @@ class Reddit_antiracistDataset(RawReddit):
                     process_reddit, self.data['body']), total=len(self.data), ncols=80))
         self.uniform_format(timestamp_col='created_utc')
         data_yearly = corpus_year_count(self.data)
-        neutral_sampled = self.ref_corpora['neutral_train'].groupby(self.ref_corpora['neutral_train'].timestamp.dt.year).apply(
+        neutral_gped = self.ref_corpora['neutral_train'].groupby(self.ref_corpora['neutral_train'].timestamp.dt.year)
+        neutral_sampled = neutral_gped.apply(
             lambda group: group.sample(
-                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] - \
-                    data_yearly[('post_count', 'count')][group.name]
-            )).reset_index(drop=True)
+                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] - data_yearly[('post_count', 'count')][group.name])).reset_index(drop=True)
         # Add antiracist + neutral
         self.data = pd.concat([self.data, neutral_sampled]).sample(frac=1).reset_index(drop=True)
         self.uniform_format() # To get new indexes
@@ -532,16 +532,14 @@ class News_matchDataset(Dataset):
         self.uniform_format(timestamp_col='year', format='%Y')
 
 
-class RawTwitter(Dataset):
-
-
 class Twitter_matchDataset(Dataset):
-    """ Neutral (non-white supremacist) Twitter data to match Twitter data in white supremacy dataset """
+    """ Neutral (non-white supremacist) Twitter data to match Twitter data in white supremacy dataset
+        Superclass for tweet JSON objects scraped """
 
     def load(self):
         """ Load tweets collected through keywords at get_tweets_by_query.py (I think) and get_tweets_by_query.ipynb """
         dfs = []
-        for fname in tqdm(sorted(os.listdir(self.load_paths[0]))):
+        for fname in tqdm(sorted(os.listdir(self.load_paths[0])), ncols=80):
             with open(os.path.join(self.load_paths[0], fname)) as f:
                 dfs.append(pd.json_normalize([json.loads(line) for line in f.read().splitlines()]))
         self.data = pd.concat(dfs).reset_index(drop=True)
@@ -556,6 +554,21 @@ class Twitter_matchDataset(Dataset):
         self.data.drop(columns='text', inplace=True)
         self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='created_at')
+
+
+class Twitter_antiracistDataset(Twitter_matchDataset):
+    """ Load and process tweets from antiracist accounts to match Twitter data in white supremacy dataset """
+
+    def process(self):
+        """ Sample based on white supremacist yearly counts
+            Process data for combining with other datasets in neutral corpus.
+        """
+        self.data['created_at'] = pd.to_datetime(self.data['created_at'])
+        self.data = self.data[self.data.created_at.dt.year.isin(self.lookup['white_supremacist_train'].index)]
+        self.data = self.data.groupby(self.data.created_at.dt.year).apply(
+                lambda group: group.sample(
+                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
+        super().process()
 
 
 class Alatawi2021Dataset(Dataset):

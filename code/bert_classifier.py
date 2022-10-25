@@ -28,7 +28,7 @@ class BertClassifier:
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
             self.tokenizer = AutoTokenizer.from_pretrained(load)
-        self.n_epochs = 3
+        self.n_epochs = 4
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.metrics = {'accuracy': load_metric('accuracy'), 
                 'precision': load_metric('precision'),
@@ -50,7 +50,7 @@ class BertClassifier:
             learning_rate=2e-5,
             per_device_train_batch_size = self.batch_size,
             per_device_eval_batch_size = self.batch_size,
-            num_train_epochs=4,
+            num_train_epochs=self.n_epochs,
             weight_decay=0.01,
             evaluation_strategy='steps',
             save_strategy='steps',
@@ -123,13 +123,14 @@ class BertClassifier:
         """ Preprocess HuggingFace dataset """
         return self.tokenizer(examples["text"], truncation=True)
 
-    def evaluate(self, test: pd.DataFrame, test_by_dataset=False):
+    def evaluate(self, test: pd.DataFrame, test_by_dataset=False, name=None):
         """ Evaluate the model on an unseen dataset.
             Args:
                 test: pandas DataFrame of unseen data, containing 'text' and 'label' columns
                 test_by_dataset: whether to evaluate each dataset separately in the test corpus
+                name: name of the dataset/corpus
         """
-        print("Evaluating on test corpus...")
+        print(f"Evaluating on test corpus {name}...")
         result_lines = []
         if test_by_dataset:
             for dataset in test.dataset.unique():

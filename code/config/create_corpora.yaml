@@ -117,11 +117,11 @@ corpora:
         domain: forum
         load_paths: 
           - '../data/antiracist/reddit_comments'
-      #- name: twitter_antiracist
-      #  source: twitter
-      #  domain: tweet
-      #  load_paths: 
-      #    - '../data/antiracist/twitter/'
+      - name: twitter_antiracist
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '../data/antiracist/twitter/'
       #- name: article_antiracist
       #  source: news
       #  domain: long-form
