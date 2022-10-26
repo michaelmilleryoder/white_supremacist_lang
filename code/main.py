@@ -42,7 +42,6 @@ def main():
                         corpora[config['experiment']['train_pos']], 
                         corpora[config['experiment']['train_neg']], 
                         [corpora[corpus_name] for corpus_name in config['experiment']['test_corpora']], 
-                        config['experiment']['test_by_dataset'],
                         config['experiment']['classifier'])
         exp.run()
 

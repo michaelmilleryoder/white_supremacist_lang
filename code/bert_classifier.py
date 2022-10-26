@@ -12,6 +12,8 @@ from transformers import (AutoTokenizer, DataCollatorWithPadding,
         AutoModelForSequenceClassification, TrainingArguments, Trainer)
 import numpy as np
 
+from corpus import Corpus
+
 
 class BertClassifier:
 
@@ -89,7 +91,7 @@ class BertClassifier:
         self.train_data, self.train_tokenized = self.prepare_dataset(data, split=True)
         #self.trainer.train_dataset = self.train_tokenized["train"],
         #self.trainer.eval_dataset = self.train_tokenized["test"],
-        # TODO: initialize new Trainer params based on ones specified in init so don't duplicate
+        # Tried and failed to specify most of the params in init and just specify train and eval datasets here
         self.trainer = Trainer(
             model = self.model,
             args = self.training_args,
@@ -102,7 +104,6 @@ class BertClassifier:
         print('Training model...')
         res = self.trainer.train()
         self.trainer.save_model() # I assume saves to the output dir
-        pdb.set_trace() # check which metrics (want f1, recall and precision)
         self.trainer.save_metrics('all', res.metrics)
 
     def prepare_dataset(self, data: pd.DataFrame, split=False):
@@ -123,39 +124,28 @@ class BertClassifier:
         """ Preprocess HuggingFace dataset """
         return self.tokenizer(examples["text"], truncation=True)
 
-    def evaluate(self, test: pd.DataFrame, test_by_dataset=False, name=None):
-        """ Evaluate the model on an unseen dataset.
+    def evaluate(self, test: list[Corpus]):
+        """ Evaluate the model on unseen corpora. Gives separate evaluations per dataset within the corpora
             Args:
-                test: pandas DataFrame of unseen data, containing 'text' and 'label' columns
-                test_by_dataset: whether to evaluate each dataset separately in the test corpus
-                name: name of the dataset/corpus
+                test: list of Corpus objects with pandas DataFrame of unseen data in corpus.data, 
+                    containing 'text' and 'label' columns
         """
-        print(f"Evaluating on test corpus {name}...")
         result_lines = []
-        if test_by_dataset:
-            for dataset in test.dataset.unique():
-                selected = test.query('dataset==@dataset')
+        for corpus in test:
+            print(f"Evaluating on test corpus {corpus.name}...")
+            for dataset in corpus.data.dataset.unique():
+                selected = corpus.data.query('dataset==@dataset')
                 test_data, test_tokenized = self.prepare_dataset(selected, split=False)
                 res = self.trainer.evaluate(test_tokenized)
                 result_lines.append(
-                    {'dataset': dataset, 'f1': res['eval_f1']['f1'], 'precision': res['eval_precision']['precision'],
+                    {'dataset': dataset, 'f1': res['eval_f1']['f1'], 
+                    'precision': res['eval_precision']['precision'],
                      'recall': res['eval_recall']['recall'], 'accuracy': res['eval_accuracy']['accuracy']}
                 )
                 pred_output = self.trainer.predict(test_tokenized)
                 preds = np.argmax(pred_output.predictions, axis=-1)
                 pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.txt')
                 np.savetxt(pred_outpath, preds)
-        else:
-            self.test_data, self.test_tokenized = self.prepare_dataset(test, split=False)
-            res = self.trainer.evaluate(self.test_tokenized)
-            result_lines.append(
-                {'dataset': 'all', 'f1': res['eval_f1']['f1'], 'precision': res['eval_precision']['precision'],
-                 'recall': res['eval_recall']['recall'], 'accuracy': res['eval_accuracy']['accuracy']}
-            )
-            pred_output = self.trainer.predict(test_tokenized)
-            preds = np.argmax(pred_output.predictions, axis=-1)
-            pred_outpath = os.path.join(self.output_dir, f'all_predictions.txt')
-            np.savetxt(pred_outpath, preds)
         results = pd.DataFrame(result_lines)
         outpath = os.path.join(self.output_dir, 'results.jsonl')
         results.to_json(outpath, orient='records', lines=True)

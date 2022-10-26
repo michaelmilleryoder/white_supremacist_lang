@@ -21,7 +21,7 @@ from tqdm import tqdm
 def main():
 
     # Settings
-    tag = 'blacklivesmatter'
+    tag = 'racism'
     url_outpath = f'../../data/antiracist/medium/{tag}_urls.txt'
     article_outpath = f'../../data/antiracist/medium/{tag}_articles.jsonl'
     start_year = 2010 # 2010 in white supremacist data

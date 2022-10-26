@@ -765,3 +765,27 @@ class Hatecheck_identity_nonhateDataset(Dataset):
         self.data['text'] = self.data.test_case.map(tokenize_lowercase)
         self.data['label'] = 0
         self.uniform_format()
+
+
+class Medium_antiracistDataset(Dataset):
+    """ Medium articles/blog posts scraped if they contained anti-racist tags """
+
+    def load(self):
+        dfs = []
+        for fname in [f for f in os.listdir(self.load_paths[0]) if f.endswith('.jsonl')]:
+            tag = re.split(r'_articles\d?\.', fname)[0]
+            fpath = os.path.join(self.load_paths[0], fname)
+            dfs.append(pd.read_json(fpath, orient='records', lines=True).assign(tag=tag))
+        data = pd.concat(dfs)
+
+        # Filter out empty articles
+        self.data = data[data.title != data.text]
+
+    def process(self):
+        """ Sample data to match the number of long-form articles in the white supremacist corpus """
+        ws_long = self.ref_corpora['white_supremacist_train'].query('domain=="long-form"')
+        self.data = self.data.sample(len(ws_long))
+
+        # Process
+        self.data['text'] = self.data['text'].map(tokenize_lowercase)
+        self.uniform_format(timestamp_col='date')

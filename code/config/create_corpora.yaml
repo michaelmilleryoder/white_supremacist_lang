@@ -122,11 +122,11 @@ corpora:
         domain: tweet
         load_paths: 
           - '../data/antiracist/twitter/'
-      #- name: article_antiracist
-      #  source: news
-      #  domain: long-form
-      #  load_paths: 
-      #    - '/storage2/mamille3/data/news/now2010-2021/text'
+      - name: medium_antiracist
+        source: medium
+        domain: long-form
+        load_paths: 
+          - '../data/antiracist/medium'
     ref_corpora: 
       - 'white_supremacist_train'
       - 'neutral_train'
@@ -162,6 +162,15 @@ corpora:
           - '../data/adl_heatmap/adl_quotes.csv'
           - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
     
+  bias_test:
+    create: True
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   name: Null
