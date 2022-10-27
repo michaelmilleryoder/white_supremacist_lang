@@ -82,23 +82,28 @@ class Dataset:
         self.data = pd.DataFrame()
         #cls.get_subclass()
 
-    def uniform_format(self, timestamp_col=None, unit=None, errors='raise', format=None):
+    def uniform_format(self, timestamp_col=None, min_word_limit=10, unit=None, format=None, errors='raise'):
         """ Format the dataframe for combining with other datasets
             Set a column to a timestamp data type if there is one
             Create an index for the dataset with the dataset name.
             Add a column of the dataset name, source and domain.
+            Filter to posts above a word_limit (shorter often didn't reveal the ideology).
             Filter self.data to just the columns needed from all datasets:
                 text, timestamp (if present), dataset, source, domain
             Args:
                 timestamp_col: the name of a column to convert to a datetime data type. If None, no timestamp
+                min_word_limit: Minimum word limit of posts. Put 1 to take all posts
                 unit: Additional parameter to pass to pd.to_datetime
                 format: Additional parameter to pass to pd.to_datetime
+                errors: Additional parameter to pass to pd.to_datetime
         """
 
-        if timestamp_col is not None:
-            self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
+        # Set index first so regardless of filtering will have the same
         self.data['id'] = self.name + '_' + self.data.index.astype(str)
         self.data.set_index('id', inplace=True)
+        self.data = self.data[self.data['text'].str.split().str.len() >= word_limit]
+        if timestamp_col is not None:
+            self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
         self.data['dataset'] = self.name
         self.data['source'] = self.source
         self.data['domain'] = self.domain
@@ -423,13 +428,13 @@ class Reddit_matchDataset(RawReddit):
         """ Sample data to match forum data in white supremacist data by year (random across subreddits).
             Process data for combining with other datasets in neutral corpus.
         """
-        self.data = self.data.groupby(self.data.created_utc.dt.year).apply(
-                lambda group: group.sample(
-                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
         with Pool(self.n_jobs) as p:
             self.data['text'] = list(tqdm(p.imap(
                     process_reddit, self.data['body']), total=len(self.data), ncols=80))
         self.uniform_format(timestamp_col='created_utc')
+        self.data = self.data.groupby(self.data.timestamp.dt.year).apply(
+                lambda group: group.sample(
+                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
 
     #def print_stats(self):
     #    """ Print statistics on number of posts and word count per year compared to the reference corpus
@@ -578,7 +583,7 @@ class Alatawi2021Dataset(Dataset):
         """ Process data for evaluating classifiers based on other datasets. """
         self.data['text'] = self.data['input.text'].map(tokenize_lowercase)
         self.data['label'] = self.data['Voting and Final Labels']
-        self.uniform_format()
+        self.uniform_format(min_word_limit=0)
 
 
 class Siegel2021Dataset(Dataset):
@@ -615,7 +620,7 @@ class Siegel2021Dataset(Dataset):
         tokenizer = TweetTokenizer(strip_handles=True)
         self.data['text'] = [process_tweet_text(text, tokenizer) for text in self.data['text']]
         self.data['label'] = self.data['white_nationalism'].map(lambda x: 1 if x=='yes' else 0)
-        self.uniform_format()
+        self.uniform_format(min_word_limit=0)
 
 
 class Siegel2021_white_nationalist_onlyDataset(Siegel2021Dataset):
@@ -660,7 +665,7 @@ class Adl_heatmapDataset(Dataset):
     def process(self):
         self.data['text'] = self.data['quote'].map(tokenize_lowercase)
         self.data['label'] = 1 # all labeled as white supremacist
-        self.uniform_format()
+        self.uniform_format(min_word_limit=1)
 
 
 class Rieger2021Dataset(Dataset):
@@ -750,7 +755,7 @@ class Rieger2021Dataset(Dataset):
         self.data['text'] = self.data['Text'].map(process_rieger2021)
         self.data = self.data[self.data['text'] != '']
         self.data['label'] = self.data['white_supremacist'].astype(int)
-        self.uniform_format()
+        self.uniform_format(min_word_limit=0)
 
 
 class Hatecheck_identity_nonhateDataset(Dataset):
@@ -764,7 +769,7 @@ class Hatecheck_identity_nonhateDataset(Dataset):
     def process(self):
         self.data['text'] = self.data.test_case.map(tokenize_lowercase)
         self.data['label'] = 0
-        self.uniform_format()
+        self.uniform_format(min_word_limit=0)
 
 
 class Medium_antiracistDataset(Dataset):

@@ -44,13 +44,13 @@ def remove_nonlatin(text):
 
 
 def process_tweet(text, user_mentions, urls, tokenizer):
+    """ Process tweet text when user mentions and urls are available """
     new_text = text
     if isinstance(user_mentions, list):
         new_text = remove_mentions(new_text, user_mentions)
     if isinstance(urls, list):
         new_text = remove_specified_urls(new_text, urls)
-    new_text = ' '.join(tokenizer.tokenize(new_text))
-    return new_text.lower()
+    return process_tweet_text(text, tokenizer)
 
 
 def process_tweet_text(text, tokenizer):
@@ -127,6 +127,8 @@ def process_chat(text, tokenizer):
         res =  text.split(': ')[1]
     else:
         res = text
+    res = re.sub(r'<@\d+>', '', res)
+    res = remove_urls(res)
     return ' '.join(tokenizer.tokenize(res)).lower()
 
 

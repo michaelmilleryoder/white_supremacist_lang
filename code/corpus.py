@@ -30,9 +30,10 @@ class Corpus:
                         Will be loaded from disk (must already be saved out) if create is True
         """
         self.name = name
-        self.base_fpath = '../data/corpora/{}_corpus.json'
-        self.base_tmp_fpath = '../tmp/{}_corpus.pkl'
-        self.fpath = self.base_fpath.format(self.name)
+        self.base_dirpath = '../data/corpora'
+        self.fpath = os.path.join(self.base_dirpath, f'{self.name}_corpus.json')
+        self.stats_fpath = os.path.join(self.base_dirpath, f'{self.name}_stats.jsonl')
+        self.base_tmp_fpath = '../tmp/{}_corpus.pkl' # pickling for faster loading
         self.tmp_fpath = self.base_tmp_fpath.format(self.name) # pickling for faster loading
         self.create = create
         self.ref_corpora = ref_corpora
@@ -60,7 +61,7 @@ class Corpus:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs)
-            # TODO: Save out stats on the dataset in a log or output dir (#posts, #words per domain type, overall)
+            self.print_save_stats()
             self.save()
         else:
             # Try loading from pickle since it's faster
@@ -71,6 +72,20 @@ class Corpus:
             print(f"Loading corpus from {load_path}...")
             self.data = self.load_corpus(load_path)
         return self
+
+    def print_save_stats(self):
+        """ Print, save out stats on the dataset in a log or output dir 
+            (#posts, #words per domain type, overall)
+        """
+        self.data['num_words'] = self.data.text.str.split().str.len()
+        stats = self.data.groupby('domain').agg({'num_words': ['count', 'sum', 'mean']})
+        stats.columns = ['post_count', 'word_count', 'avg_post_words']
+        total = pd.DataFrame({'post_count': len(self.data), 'word_count': self.data.num_words.sum()}, index=['total'])
+        stats = pd.concat([stats,total])
+        stats.index.name = 'domain'
+        print(f"Corpus {self.name} stats:")
+        print(stats)
+        stats.to_json(self.stats_fpath, orient='records', lines=True)
 
     def save(self):
         """ Save out corpus data for easier loading """
