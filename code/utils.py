@@ -58,16 +58,20 @@ def process_tweet_text(text, tokenizer):
     new_text = text
     new_text = remove_urls(new_text)
     new_text = remove_nonlatin(new_text)
-    new_text = ' '.join(tokenizer.tokenize(new_text))
+    tokens = tokenizer.tokenize(new_text)
+    n_tokens = len(tokens)
+    new_text = ' '.join(tokens)
     new_text = new_text.replace('RT : ', '')
     new_text = new_text.replace('_', '') # specific to Rieger+2021 dataset issues
     new_text = re.sub('http|https', '', new_text) # specific to Rieger+2021 dataset issues
-    return new_text.lower()
+    return (new_text.lower(), n_tokens)
 
 
 def tokenize_lowercase(inp):
     """ Tokenize and lowercase text """
-    return ' '.join(nltk.word_tokenize(str(inp))).lower()
+    tokens = nltk.word_tokenize(str(inp))
+    n_tokens = len(tokens)
+    return (' '.join(tokens).lower(), n_tokens)
 
 
 def process_reddit(inp):
@@ -107,14 +111,12 @@ def process_4chan(text):
     text = re.sub(r'\s+', ' ', text).strip()
     # Remove special characters
     text = remove_special(text)
-    # Tokenize
-    text = ' '.join(nltk.word_tokenize(str(text))).lower()
-    return text
+    return tokenize_lowercase(text)
 
 
 def process_article(inp):
-    text = ' '.join(nltk.word_tokenize(str(inp.replace('.', '. ')))).lower()
-    return text
+    text = str(inp).replace('.', '. ')
+    return tokenize_lowercase(text)
 
 
 def process_chat(text, tokenizer):
@@ -129,7 +131,9 @@ def process_chat(text, tokenizer):
         res = text
     res = re.sub(r'<@\d+>', '', res)
     res = remove_urls(res)
-    return ' '.join(tokenizer.tokenize(res)).lower()
+    tokens = tokenizer.tokenize(res)
+    n_tokens = len(tokens)
+    return (' '.join(tokens).lower(), n_tokens)
 
 
 def load_now(fpath):
@@ -154,7 +158,7 @@ def process_now(inp):
     text = re.sub(r'@@\d+ ', '', inp)
     text = re.sub(r'<\w+>', '', text)
     text = text.replace('@ @ @ @ @ @ @ @ @ @ ', '')
-    return text.lower()
+    return (text.lower(), len(text.split()))
 
 
 def process_rieger2021(text):
@@ -162,5 +166,9 @@ def process_rieger2021(text):
     # Remove special characters
     text = remove_special(str(text))
     # Tokenize
-    text = tokenize_lowercase(text)
-    return text
+    return tokenize_lowercase(text)
+
+
+def word_count(text):
+    """ Returns count of words in text that is already tokenized """
+    return len(text.split())

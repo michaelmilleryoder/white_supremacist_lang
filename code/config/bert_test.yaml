@@ -169,7 +169,7 @@ corpora:
           - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
 
   bias_test:
-    create: True
+    create: False
     datasets:
       - name: hatecheck_identity_nonhate
         source: hatecheck
@@ -179,7 +179,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: ws_antiracist_416000_test
+  name: ws_antiracist_480000_test
   train: False
   test: True
   train_pos: white_supremacist_train
@@ -191,4 +191,4 @@ experiment: # define experiments where train particular classifiers on particula
   classifier: 
     type: bert
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/ws_antiracist/checkpoint-416000'
+    load: '../output/bert/ws_antiracist/checkpoint-480000'

@@ -17,14 +17,14 @@ corpora:
           - ../data/elsherief2021/data.jsonl
           - ../data/elsherief2021/users.jsonl
           - ../data/qian2018/users.jsonl
-          - /storage2/mamille3/data/hate_speech/elsherief2021/implicit_hate_v1_stg2_posts.tsv
+          - ../../data/hate_speech/elsherief2021/implicit_hate_v1_stg2_posts.tsv
       - name: patriotfront
         source: discord
         domain: chat
         load_paths:
-          - /storage2/mamille3/data/patriotfront/2017-Vanguard_America-Patriot_Front/Discord/dump
-          - /storage2/mamille3/data/patriotfront/2018/Discord/dump_Front_And_Center
-          - /storage2/mamille3/data/patriotfront/2018/Discord/dump_MI_Goy_Scouts_Official
+          - ../../data/patriotfront/2017-Vanguard_America-Patriot_Front/Discord/dump
+          - ../../data/patriotfront/2018/Discord/dump_Front_And_Center
+          - ../../data/patriotfront/2018/Discord/dump_MI_Goy_Scouts_Official
           - ../resources/us_first_names_1990.csv
       - name: ironmarch
         source: ironmarch
@@ -40,13 +40,13 @@ corpora:
         source: 4chan
         domain: forum
         load_paths:
-          - /storage2/mamille3/data/4chan/jokubausaite2020/
+          - ../../data/4chan/jokubausaite2020/
       - name: papasavva2020
         source: 4chan
         domain: forum
         load_paths:
           - ../data/papasavva2020_white_supremacist_flag_posts.csv
-          - /storage2/mamille3/data/4chan/jokubausaite2020/
+          - ../../data/4chan/jokubausaite2020/
       - name: calderon2021
         source: daily_stormer
         domain: long-form
@@ -82,30 +82,31 @@ corpora:
         domain: long-form
         load_paths:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
+    sample: ['domain=="forum"', 90000] # [query to select data, n to sample from that queried data]
 
   neutral_train:
-    create: False
+    create: True
     datasets:
+      - name: discord_match
+        source: discord
+        domain: chat
+        load_paths: 
+          - '../../data/discord/v3/content/drive/Shareddrives/Datasets/cleaned-v4/discord-v3'
       - name: reddit_match
         source: reddit
         domain: forum
         load_paths: 
           - '../data/neutral/reddit_comments'
-      - name: discord_match
-        source: discord
-        domain: chat
-        load_paths: 
-          - '/storage2/mamille3/data/discord/v3/content/drive/Shareddrives/Datasets/cleaned-v4/discord-v3'
       - name: news_match
         source: news
         domain: long-form
         load_paths: 
-          - '/storage2/mamille3/data/news/now2010-2021/text'
+          - '../../data/news/now2010-2021/text'
       - name: twitter_match
         source: twitter
         domain: tweet
         load_paths: 
-          - '/storage2/mamille3/white_supremacist_lang/data/neutral/twitter/'
+          - '../data/neutral/twitter/'
     ref_corpora: 
       - 'white_supremacist_train'
 
@@ -132,7 +133,7 @@ corpora:
       - 'neutral_train'
 
   annotated_test: # test sets human-annotated for white supremacy
-    create: False
+    create: True
     datasets:
       - name: alatawi2021
         source: twitter
@@ -153,7 +154,7 @@ corpora:
           - '../data/siegel2021/hate_speech_training_data.csv'
 
   domain_test: # out-of-domain evaluations
-    create: False
+    create: True
     datasets:
       - name: adl_heatmap
         source: adl_heatmap

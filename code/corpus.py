@@ -19,7 +19,8 @@ class Corpus:
         Load, process these datasets into a uniform format for building classifiers
     """
 
-    def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None):
+    def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
+                    sample: tuple[str, int] = ('', -1)):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -28,6 +29,9 @@ class Corpus:
                 datasets: list of dictionaries with names and associated loading paths for datasets
                 ref_corpora: a list of the names of any reference corpora that are used to construct this corpus. 
                         Will be loaded from disk (must already be saved out) if create is True
+                sample: whether to sample a portion of the full corpus. 
+                        Tuple of (query to select data, n to sample from that queried data)
+                        ('', -1) to take the full corpus
         """
         self.name = name
         self.base_dirpath = '../data/corpora'
@@ -47,6 +51,7 @@ class Corpus:
                 ref_corpora[corpus_name] = self.load_corpus(ref_corpus_fpath)
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpora=ref_corpora) for ds in datasets]
+        self.sample_query, self.sample_n = sample
         self.data = None
 
     def load(self):
@@ -61,6 +66,8 @@ class Corpus:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs)
+            if self.sample_n > 0:
+                self.sample()
             self.print_save_stats()
             self.save()
         else:
@@ -73,6 +80,13 @@ class Corpus:
             self.data = self.load_corpus(load_path)
         return self
 
+    def sample(self):
+        """ Sample particular portions of the corpus """
+        selected = self.data.query(self.sample_query)
+        rest = self.data[~self.data.index.isin(selected.index)]
+        sampled = selected.sample(self.sample_n)
+        self.data = pd.concat([sampled, rest]).sort_index()
+
     def print_save_stats(self):
         """ Print, save out stats on the dataset in a log or output dir 
             (#posts, #words per domain type, overall)
@@ -82,6 +96,9 @@ class Corpus:
         stats.columns = ['post_count', 'word_count', 'avg_post_words']
         total = pd.DataFrame({'post_count': len(self.data), 'word_count': self.data.num_words.sum()}, index=['total'])
         stats = pd.concat([stats,total])
+        stats['post%'] = stats['post_count']/stats.loc['total', 'post_count']
+        stats['word%'] = stats['word_count']/stats.loc['total', 'word_count']
+        stats = stats[['post_count', 'post%', 'word_count', 'word%', 'avg_post_words']]
         stats.index.name = 'domain'
         print(f"Corpus {self.name} stats:")
         print(stats)

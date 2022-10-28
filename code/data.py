@@ -18,14 +18,14 @@ from tqdm import tqdm
 
 from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
         process_tweet, process_tweet_text, process_article, process_reddit, process_chat, 
-        load_now, process_now, process_rieger2021)
+        load_now, process_now, process_rieger2021, word_count)
 
 
 def corpus_year_count(corpus):
     """ Returns a table of post and word counts per year in a corpus (often for matching samples) 
         corpus: pandas DataFrame of data used as a corpus. Must have a timestamp datetime column
     """
-    corpus['word_count'] = corpus.text.str.split().str.len()
+    #corpus['word_count'] = corpus.text.str.split().str.len()
     yearly = corpus.groupby(by=corpus.timestamp.dt.year).agg({
         'text': 'count',
         'word_count': ['sum', 'mean'],
@@ -101,7 +101,10 @@ class Dataset:
         # Set index first so regardless of filtering will have the same
         self.data['id'] = self.name + '_' + self.data.index.astype(str)
         self.data.set_index('id', inplace=True)
-        self.data = self.data[self.data['text'].str.split().str.len() >= word_limit]
+        #self.data = self.data[self.data['text'].str.split().str.len() >= min_word_limit]
+        #with Pool(self.n_jobs) as p:
+        #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=80))
+        self.data = self.data[self.data['word_count'] >= min_word_limit]
         if timestamp_col is not None:
             self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
         self.data['dataset'] = self.name
@@ -465,14 +468,16 @@ class Reddit_antiracistDataset(RawReddit):
             self.data['text'] = list(tqdm(p.imap(
                     process_reddit, self.data['body']), total=len(self.data), ncols=80))
         self.uniform_format(timestamp_col='created_utc')
-        data_yearly = corpus_year_count(self.data)
-        neutral_gped = self.ref_corpora['neutral_train'].groupby(self.ref_corpora['neutral_train'].timestamp.dt.year)
-        neutral_sampled = neutral_gped.apply(
-            lambda group: group.sample(
-                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] - data_yearly[('post_count', 'count')][group.name])).reset_index(drop=True)
-        # Add antiracist + neutral
-        self.data = pd.concat([self.data, neutral_sampled]).sample(frac=1).reset_index(drop=True)
-        self.uniform_format() # To get new indexes
+
+        # Fill in with neutral data
+        #data_yearly = corpus_year_count(self.data)
+        #neutral_gped = self.ref_corpora['neutral_train'].groupby(self.ref_corpora['neutral_train'].timestamp.dt.year)
+        #neutral_sampled = neutral_gped.apply(
+        #    lambda group: group.sample(
+        #        self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] - data_yearly[('post_count', 'count')][group.name])).reset_index(drop=True)
+        ## Add antiracist + neutral
+        #self.data = pd.concat([self.data, neutral_sampled]).sample(frac=1).reset_index(drop=True)
+        #self.uniform_format() # To get new indexes
 
 
 class Discord_matchDataset(Dataset):
@@ -491,18 +496,17 @@ class Discord_matchDataset(Dataset):
         """ Sample data to match chat data in white supremacist training dataset.
             Process data for combining with other datasets in neutral corpus.
         """
-
-        # Sample to match the word count of white supremacist matching chat data
-        self.data = self.data.sample(int(self.ref_corpora['white_supremacist_train'].word_count.sum()/4.2)) 
-        # 4.2 is the average words/posts in the Discord data (see neutral_data.ipynb)
-
-        # Process data
         tokenizer = TweetTokenizer(strip_handles=True)
         zipped = zip(self.data['message'], itertools.repeat(tokenizer))
         with Pool(self.n_jobs) as p:
-            #self.data['text'] = list(tqdm(p.imap(process_chat, *zipped), total=len(self.data), ncols=80))
-            self.data['text'] = p.starmap(process_chat, tqdm(zipped, total=len(self.data), ncols=80))
+            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(
+                    process_chat, tqdm(zipped, total=len(self.data), ncols=80))))
+        avg_wds_per_post = self.data.word_count.mean()
         self.uniform_format()
+
+        # Sample to match the word count of white supremacist matching chat data
+        self.data = self.data.sample(int(
+            self.ref_corpora['white_supremacist_train'].word_count.sum()/avg_wds_per_post)) 
 
 
 class News_matchDataset(Dataset):
@@ -516,7 +520,7 @@ class News_matchDataset(Dataset):
         fpaths = sorted([os.path.join(self.load_paths[0], fname) for fname in os.listdir(self.load_paths[0]) if re.search(
                 r'us', fname, flags=re.IGNORECASE)])
 
-        with Pool(20) as p:
+        with Pool(self.n_jobs) as p:
             dfs = list(tqdm(p.imap(load_now, fpaths), total=len(fpaths), ncols=80))
         self.data = pd.concat(dfs)
 
@@ -524,17 +528,19 @@ class News_matchDataset(Dataset):
         """ Sample data to match long-form data in white supremacist training dataset.
             Process data for combining with other datasets in neutral corpus.
         """
-        # Sample specific number of articles by year
-        self.data = self.data[self.data['year'].isin(self.lookup['white_supremacist_train'].index)].groupby('year').apply(
-                lambda group: group.sample(int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]/3.5
-            ))).reset_index(drop = True)
-        # 3.5 is approximately the number of articles to match the word count in white supremacist data
-
         # Process data
         with Pool(self.n_jobs) as p:
             self.data['text'] = list(tqdm(p.imap(
                     process_now, self.data['article']), total=len(self.data), ncols=80))
         self.uniform_format(timestamp_col='year', format='%Y')
+
+        # Sample specific number of articles by year
+        # don't bother about word count since it will be similar once it's truncated with BERT to 512 tokens
+        self.data = self.data[self.data.timestamp.dt.year.isin(self.lookup['white_supremacist_train'].index)].groupby(
+                self.data.timestamp.dt.year).apply(lambda group: group.sample(
+                #int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]/3.5
+                self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')] 
+            )).reset_index(drop = True)
 
 
 class Twitter_matchDataset(Dataset):
