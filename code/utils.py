@@ -163,12 +163,14 @@ def process_now(inp):
 
 def process_rieger2021(text):
     """ Preprocess Rieger+ 2021 4chan, 8chan, t_D data """
+    # TODO just make this a preprocess classmethod for Rieger2021 like is done with Stormfront
     # Remove special characters
     text = remove_special(str(text))
     # Tokenize
     return tokenize_lowercase(text)
 
 
-def word_count(text):
-    """ Returns count of words in text that is already tokenized """
-    return len(text.split())
+def tokenize_remove(text, remove):
+    """ Tokenize and remove any matches from a list (remove) """
+    tokens = [wd for wd in nltk.word_tokenize(str(text)) if wd not in remove]
+    return (' '.join(tokens).lower(), len(tokens))

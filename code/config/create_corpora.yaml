@@ -3,7 +3,7 @@
 corpora:
 
   white_supremacist_train:
-    create: False
+    create: True
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter

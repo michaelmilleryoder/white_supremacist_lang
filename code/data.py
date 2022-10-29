@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
         process_tweet, process_tweet_text, process_article, process_reddit, process_chat, 
-        load_now, process_now, process_rieger2021, word_count)
+        load_now, process_now, process_rieger2021, tokenize_remove)
 
 
 def corpus_year_count(corpus):
@@ -89,7 +89,7 @@ class Dataset:
             Add a column of the dataset name, source and domain.
             Filter to posts above a word_limit (shorter often didn't reveal the ideology).
             Filter self.data to just the columns needed from all datasets:
-                text, timestamp (if present), dataset, source, domain
+                text, word_count, timestamp (if present), dataset, source, domain
             Args:
                 timestamp_col: the name of a column to convert to a datetime data type. If None, no timestamp
                 min_word_limit: Minimum word limit of posts. Put 1 to take all posts
@@ -110,7 +110,8 @@ class Dataset:
         self.data['dataset'] = self.name
         self.data['source'] = self.source
         self.data['domain'] = self.domain
-        selected_cols = ['text', 'dataset', 'source', 'domain'] + [col for col in ['timestamp', 'label'] if col in self.data.columns]
+        selected_cols = ['text', 'word_count', 'dataset', 'source', 'domain'] + \
+                [col for col in ['timestamp', 'label'] if col in self.data.columns]
         self.data = self.data[selected_cols]
 
     def load(self):
@@ -135,26 +136,31 @@ class Dataset:
         print(f'\t\t{self.name} word count sum: {self.data.word_count.sum()}')
 
 
-class Qian2018Dataset(Dataset):
+class RawTwitter(Dataset):
+    """ Class for handling scraped Twitter JSON """
+
+    def process(self):
+        """ Process Twitter data for combining with other datasets.
+        """
+        tokenizer = TweetTokenizer(strip_handles=True)
+        self.data['processed_text'], self.data['word_count'] = list(zip(*[process_tweet(
+            text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
+            self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), 
+            total=len(self.data), ncols=80)]))
+        self.data.drop(columns='text', inplace=True)
+        self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
+        self.uniform_format(timestamp_col='created_at')
+
+
+class Qian2018Dataset(RawTwitter):
 
     def load(self):
         """ Load tweets """
         with open(self.load_paths[0], 'r') as f:
             self.data = pd.json_normalize([json.loads(tweet) for tweet in f.read().splitlines()])
 
-    def process(self):
-        """ Process data into a format to combine with other datasets """
-        # Tokenize, anonymize texts
-        tokenizer = TweetTokenizer(strip_handles=True)
-        self.data['processed_text'] = [process_tweet(
-                text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
-                self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), total=len(self.data), ncols=80)]
-        self.data.drop(columns='text', inplace=True)
-        self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
-        self.uniform_format(timestamp_col='created_at')
 
-
-class Elsherief2021Dataset(Dataset):
+class Elsherief2021Dataset(RawTwitter):
 
     def load(self):
         """ Load tweets """
@@ -191,16 +197,6 @@ class Elsherief2021Dataset(Dataset):
         self.data = pd.concat([white_grievance, user_matches]).drop_duplicates(subset='id').reset_index(drop=True)
         self.data.rename(columns={'id': 'tweet_id'}, inplace=True)
         
-    def process(self):
-        """ Process data into a format to combine with other datasets """
-        tokenizer = TweetTokenizer(strip_handles=True)
-        self.data['processed_text'] = [process_tweet(
-                text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
-                self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), total=len(self.data), ncols=80)]
-        self.data.drop(columns='text', inplace=True)
-        self.data.rename(columns={'processed_text': 'text'}, inplace=True)
-        self.uniform_format(timestamp_col='created_at')
-
 
 class PatriotfrontDataset(Dataset):
 
@@ -225,8 +221,8 @@ class PatriotfrontDataset(Dataset):
         common_names = set(names['Name'].str.lower()).union(names['Name.1'].str.lower())
         # Remove spencer, guy (for Richard Spencer)
         common_names -= {'spencer', 'guy'}
-        self.data['processed'] = self.data['message'].map(lambda x: ' '.join([wd for wd in nltk.word_tokenize(str(x)) if wd not in common_names]).lower())
-        self.data.rename(columns={'processed': 'text'}, inplace=True)
+        self.data['text'], self.data['word_count'] = list(zip(*[tokenize_remove(
+            text, common_names) for text in self.data['message']]))
         self.uniform_format(timestamp_col='timestamp')
 
 
@@ -235,8 +231,8 @@ class IronmarchDataset(Dataset):
     def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(
-                    tokenize_lowercase, self.data['index_content']), total=len(self.data), ncols=80))
+            self.data['processed'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+                    tokenize_lowercase, self.data['index_content']), total=len(self.data), ncols=80)))
         self.data.reset_index(drop=True, inplace=True)
         self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='index_date_created', unit='s')
@@ -248,8 +244,7 @@ class StormfrontDataset(Dataset):
     def preprocess(cls, inp):
         text = re.sub(r'Quote:\n\n\n\n\nOriginally Posted by .*\n\n\n', '', inp) # Remove quote tag
         text = re.sub(r'\S+(?:\.com|\.org|\.edu)\S*|https?:\/\/\S*', '', text) # Remove URLs
-        text = ' '.join(nltk.word_tokenize(str(text))).lower()
-        return text
+        return tokenize_lowercase(text)
 
     def load(self):
         """ Load data dump """
@@ -283,10 +278,9 @@ class StormfrontDataset(Dataset):
     def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(self.preprocess, self.data['text']), total=len(self.data), ncols=80))
-        self.data.drop(columns='text', inplace=True)
+            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(self.preprocess, self.data['text']), 
+                total=len(self.data), ncols=80)))
         self.data.reset_index(drop=True, inplace=True)
-        self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='timestamp', errors='coerce')
 
 
@@ -322,7 +316,8 @@ class Jokubausaite2020Dataset(Dataset):
     def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(process_4chan, self.data.body), total=len(self.data), ncols=80))
+            self.data['processed'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
+                total=len(self.data), ncols=80)))
         self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='timestamp')
 
@@ -358,7 +353,8 @@ class Papasavva2020Dataset(Dataset):
         self.data = self.data[~self.data.id.isin(jokubausaite2020_ids)]
 
         with Pool(self.n_jobs) as p:
-            self.data['processed'] = list(tqdm(p.imap(process_4chan, self.data.body), total=len(self.data), ncols=80))
+            self.data['processed'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
+                    total=len(self.data), ncols=80)))
         self.data.rename(columns={'processed': 'text'}, inplace=True)
 
         self.uniform_format(timestamp_col='time', unit='s')
@@ -374,8 +370,8 @@ class Calderon2021Dataset(Dataset):
     def process(self):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
-            self.data['text'] = list(tqdm(p.imap(
-                    process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data), ncols=80))
+            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+                    process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data), ncols=80)))
         # remove date errors. Could extract real date by parsing text
         self.data.loc[~self.data.date.str.startswith('20'), 'date'] = '' 
         self.data = self.data.drop(columns=['author_wording', 'title'])
@@ -403,8 +399,7 @@ class Pruden2022Dataset(Dataset):
 
     def process(self): 
         """ Process data into a format to combine with other datasets """
-        self.data['processed'] = list(map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data), ncols=80)))
-        self.data.rename(columns={'processed': 'text'}, inplace=True)
+        self.data['text'], self.data['word_count'] = list(zip(*map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data), ncols=80))))
         self.uniform_format(timestamp_col='year', format='%Y')
 
 
@@ -432,8 +427,8 @@ class Reddit_matchDataset(RawReddit):
             Process data for combining with other datasets in neutral corpus.
         """
         with Pool(self.n_jobs) as p:
-            self.data['text'] = list(tqdm(p.imap(
-                    process_reddit, self.data['body']), total=len(self.data), ncols=80))
+            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+                    process_reddit, self.data['body']), total=len(self.data), ncols=80)))
         self.uniform_format(timestamp_col='created_utc')
         self.data = self.data.groupby(self.data.timestamp.dt.year).apply(
                 lambda group: group.sample(
@@ -465,8 +460,8 @@ class Reddit_antiracistDataset(RawReddit):
             Process data for combining with other datasets in neutral corpus.
         """
         with Pool(self.n_jobs) as p:
-            self.data['text'] = list(tqdm(p.imap(
-                    process_reddit, self.data['body']), total=len(self.data), ncols=80))
+            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+                    process_reddit, self.data['body']), total=len(self.data), ncols=80)))
         self.uniform_format(timestamp_col='created_utc')
 
         # Fill in with neutral data
@@ -498,6 +493,7 @@ class Discord_matchDataset(Dataset):
         """
         tokenizer = TweetTokenizer(strip_handles=True)
         zipped = zip(self.data['message'], itertools.repeat(tokenizer))
+        # Since this takes a while just to compute the avg words per post, could sample and do that
         with Pool(self.n_jobs) as p:
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(
                     process_chat, tqdm(zipped, total=len(self.data), ncols=80))))
@@ -530,8 +526,8 @@ class News_matchDataset(Dataset):
         """
         # Process data
         with Pool(self.n_jobs) as p:
-            self.data['text'] = list(tqdm(p.imap(
-                    process_now, self.data['article']), total=len(self.data), ncols=80))
+            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+                    process_now, self.data['article']), total=len(self.data), ncols=80)))
         self.uniform_format(timestamp_col='year', format='%Y')
 
         # Sample specific number of articles by year
@@ -543,7 +539,7 @@ class News_matchDataset(Dataset):
             )).reset_index(drop = True)
 
 
-class Twitter_matchDataset(Dataset):
+class Twitter_matchDataset(RawTwitter):
     """ Neutral (non-white supremacist) Twitter data to match Twitter data in white supremacy dataset
         Superclass for tweet JSON objects scraped """
 
@@ -554,17 +550,6 @@ class Twitter_matchDataset(Dataset):
             with open(os.path.join(self.load_paths[0], fname)) as f:
                 dfs.append(pd.json_normalize([json.loads(line) for line in f.read().splitlines()]))
         self.data = pd.concat(dfs).reset_index(drop=True)
-
-    def process(self):
-        """ Process data for combining with other datasets in neutral corpus.
-        """
-        tokenizer = TweetTokenizer(strip_handles=True)
-        self.data['processed_text'] = [process_tweet(
-                text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
-                self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), total=len(self.data), ncols=80)]
-        self.data.drop(columns='text', inplace=True)
-        self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
-        self.uniform_format(timestamp_col='created_at')
 
 
 class Twitter_antiracistDataset(Twitter_matchDataset):
@@ -587,7 +572,7 @@ class Alatawi2021Dataset(Dataset):
     
     def process(self):
         """ Process data for evaluating classifiers based on other datasets. """
-        self.data['text'] = self.data['input.text'].map(tokenize_lowercase)
+        self.data['text'], self.data['word_count'] = list(zip(*self.data['input.text'].map(tokenize_lowercase)))
         self.data['label'] = self.data['Voting and Final Labels']
         self.uniform_format(min_word_limit=0)
 
@@ -669,7 +654,7 @@ class Adl_heatmapDataset(Dataset):
         self.data = self.data.drop_duplicates(subset='quote').reset_index(drop=True)
 
     def process(self):
-        self.data['text'] = self.data['quote'].map(tokenize_lowercase)
+        self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].map(tokenize_lowercase)))
         self.data['label'] = 1 # all labeled as white supremacist
         self.uniform_format(min_word_limit=1)
 
@@ -758,7 +743,7 @@ class Rieger2021Dataset(Dataset):
     def process(self):
         # Remove NaNs of Text
         self.data = self.data.dropna(subset='Text')
-        self.data['text'] = self.data['Text'].map(process_rieger2021)
+        self.data['text'], self.data['word_count'] = list(zip(*self.data['Text'].map(process_rieger2021)))
         self.data = self.data[self.data['text'] != '']
         self.data['label'] = self.data['white_supremacist'].astype(int)
         self.uniform_format(min_word_limit=0)
@@ -773,7 +758,7 @@ class Hatecheck_identity_nonhateDataset(Dataset):
         self.data = self.data.query('functionality==@selected_cols')
 
     def process(self):
-        self.data['text'] = self.data.test_case.map(tokenize_lowercase)
+        self.data['text'], self.data['word_count'] = list(zip(*self.data.test_case.map(tokenize_lowercase)))
         self.data['label'] = 0
         self.uniform_format(min_word_limit=0)
 
@@ -798,5 +783,5 @@ class Medium_antiracistDataset(Dataset):
         self.data = self.data.sample(len(ws_long))
 
         # Process
-        self.data['text'] = self.data['text'].map(tokenize_lowercase)
+        self.data['text'], self.data['word_count'] = list(zip(*self.data['text'].map(tokenize_lowercase)))
         self.uniform_format(timestamp_col='date')
