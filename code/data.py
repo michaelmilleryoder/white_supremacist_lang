@@ -426,13 +426,14 @@ class Reddit_matchDataset(RawReddit):
         """ Sample data to match forum data in white supremacist data by year (random across subreddits).
             Process data for combining with other datasets in neutral corpus.
         """
+        self.data['timestamp'] = pd.to_datetime(self.data['created_utc'], unit='s', utc=True)
+        self.data = self.data.groupby(self.data.timestamp.dt.year).apply(
+            lambda group: group.sample(
+            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
         with Pool(self.n_jobs) as p:
             self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
                     process_reddit, self.data['body']), total=len(self.data), ncols=80)))
-        self.uniform_format(timestamp_col='created_utc')
-        self.data = self.data.groupby(self.data.timestamp.dt.year).apply(
-                lambda group: group.sample(
-                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
+        self.uniform_format()
 
     #def print_stats(self):
     #    """ Print statistics on number of posts and word count per year compared to the reference corpus
@@ -491,18 +492,45 @@ class Discord_matchDataset(Dataset):
         """ Sample data to match chat data in white supremacist training dataset.
             Process data for combining with other datasets in neutral corpus.
         """
+        # Compute the avg words per post
+        min_word_limit = 10
         tokenizer = TweetTokenizer(strip_handles=True)
-        zipped = zip(self.data['message'], itertools.repeat(tokenizer))
-        # Since this takes a while just to compute the avg words per post, could sample and do that
-        with Pool(self.n_jobs) as p:
-            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(
-                    process_chat, tqdm(zipped, total=len(self.data), ncols=80))))
-        avg_wds_per_post = self.data.word_count.mean()
-        self.uniform_format()
+        #sample = self.data.sample(10000).copy()
+        #zipped_sample = zip(sample['message'], itertools.repeat(tokenizer))
+        #with Pool(self.n_jobs) as p:
+        #    sample['text'], sample['word_count'] = list(zip(*p.starmap(process_chat, zipped_sample)))
+        #sample_filtered = sample[sample['word_count']>=min_word_limit]
+        #avg_wds_per_post = sample_filtered.word_count.mean()
+        #min_chars_per_post = sample_filtered['text'].str.len().min() # so can cheaply estimate posts that will be removed
 
-        # Sample to match the word count of white supremacist matching chat data
-        self.data = self.data.sample(int(
-            self.ref_corpora['white_supremacist_train'].word_count.sum()/avg_wds_per_post)) 
+        # Iteratively sample and process, until match the word count of white supremacist matching chat data
+        #shuffled = self.data.sample(frac=1)
+        #chunks = np.array_split(shuffled, 10000)
+        ws_word_count = self.ref_corpora['white_supremacist_train'].word_count.sum()
+        sampled_words = 0
+        sampled = []
+        pbar = tqdm(total=ws_word_count, ncols=80)
+        while sampled_words < ws_word_count:
+            #selected_chunk = chunks.pop()
+            # Sample, tokenize and process
+            sample = self.data.sample(10000)
+            zipped = zip(sample['message'], itertools.repeat(tokenizer))
+            with Pool(self.n_jobs) as p:
+                sample['text'], sample['word_count'] = list(zip(*p.starmap(
+                        process_chat, zipped)))
+                filtered = sample[sample.word_count > min_word_limit]
+            sample_words = filtered.word_count.sum()
+            sampled_words += sample_words
+            sampled.append(filtered)
+            pbar.update(sample_words)
+        self.data = pd.concat(sampled).drop_duplicates()
+
+        # TODO: speed up by simply sampling a likely amount of data, processing it and then sampling up to a good word count
+        #sample = self.data.sample(int(1e6))
+        #with Pool(self.n_jobs) as p:
+        #    sample['text'], sample['word_count'] = list(zip(*p.starmap(
+        #            process_chat, zipped)))
+        self.uniform_format()
 
 
 class News_matchDataset(Dataset):
@@ -524,19 +552,19 @@ class News_matchDataset(Dataset):
         """ Sample data to match long-form data in white supremacist training dataset.
             Process data for combining with other datasets in neutral corpus.
         """
+        # Sample specific number of articles by year
+        # don't bother about word count since it will be similar once it's truncated with BERT to 512 tokens
+        match = self.data[self.data.year.isin(self.lookup['white_supremacist_train'].index)]
+        self.data = match.groupby(match.year).apply(lambda group: group.sample(
+                #int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]/3.5
+                self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')] 
+            )).reset_index(drop = True)
+
         # Process data
         with Pool(self.n_jobs) as p:
             self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
                     process_now, self.data['article']), total=len(self.data), ncols=80)))
         self.uniform_format(timestamp_col='year', format='%Y')
-
-        # Sample specific number of articles by year
-        # don't bother about word count since it will be similar once it's truncated with BERT to 512 tokens
-        self.data = self.data[self.data.timestamp.dt.year.isin(self.lookup['white_supremacist_train'].index)].groupby(
-                self.data.timestamp.dt.year).apply(lambda group: group.sample(
-                #int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]/3.5
-                self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')] 
-            )).reset_index(drop = True)
 
 
 class Twitter_matchDataset(RawTwitter):
@@ -783,5 +811,5 @@ class Medium_antiracistDataset(Dataset):
         self.data = self.data.sample(len(ws_long))
 
         # Process
-        self.data['text'], self.data['word_count'] = list(zip(*self.data['text'].map(tokenize_lowercase)))
+        self.data['text'], self.data['word_count'] = list(zip(*tqdm(self.data['text'].map(tokenize_lowercase), ncols=80)))
         self.uniform_format(timestamp_col='date')

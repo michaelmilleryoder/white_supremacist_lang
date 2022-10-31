@@ -3,7 +3,7 @@
 corpora:
 
   white_supremacist_train:
-    create: True
+    create: False
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -85,7 +85,7 @@ corpora:
     sample: ['domain=="forum"', 90000] # [query to select data, n to sample from that queried data]
 
   neutral_train:
-    create: True
+    create: False
     datasets:
       - name: discord_match
         source: discord
@@ -111,7 +111,7 @@ corpora:
       - 'white_supremacist_train'
 
   antiracist_train:
-    create: True
+    create: False
     datasets:
       - name: reddit_antiracist
         source: reddit
@@ -140,12 +140,12 @@ corpora:
         domain: tweet
         load_paths:
           - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
-      - name: siegel2021 
-        source: twitter
-        domain: tweet
-        load_paths:
-          - '../data/siegel2021/white_nationalist_training_data.csv'
-          - '../data/siegel2021/hate_speech_training_data.csv'
+      #- name: siegel2021 
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths:
+      #    - '../data/siegel2021/white_nationalist_training_data.csv'
+      #    - '../data/siegel2021/hate_speech_training_data.csv'
       - name: siegel2021_white_nationalist_only
         source: twitter
         domain: tweet
