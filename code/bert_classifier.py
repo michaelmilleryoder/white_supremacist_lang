@@ -17,11 +17,13 @@ from corpus import Corpus
 
 class BertClassifier:
 
-    def __init__(self, exp_name: str, train=False, load=None):
+    def __init__(self, exp_name: str, train=False, load=None, train_length=None):
         """ Args:
                 exp_name: name of the experiment (for the output filename)
                 train: whether the model will be trained
                 load: None to train a new model from scratch, or a path to the model to load
+                train_length: If not None, the length of the training data set, 
+                    used to calculate the number of steps before logging and evaluation
         """
         self.exp_name = exp_name
         if load is None:
@@ -30,14 +32,18 @@ class BertClassifier:
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
             self.tokenizer = AutoTokenizer.from_pretrained(load)
-        self.n_epochs = 4
+        self.n_epochs = 5
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.metrics = {'accuracy': load_metric('accuracy'), 
                 'precision': load_metric('precision'),
                 'recall': load_metric('recall'),
                'f1': load_metric('f1')}
         self.batch_size = 16
-        self.checkpoint = self.batch_size * int(2e3)
+        if train_length is None:
+            self.checkpoint = self.batch_size * int(2e3)
+        else:
+            total_steps = (int(train_length/self.batch_size) + 1) * self.n_epochs
+            self.checkpoint = int(total_steps/30)
         self.output_dir = f"../output/bert/{self.exp_name}"
         if train:
             report_to = 'wandb'
