@@ -17,13 +17,14 @@ from corpus import Corpus
 
 class BertClassifier:
 
-    def __init__(self, exp_name: str, train=False, load=None, train_length=None):
+    def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_epochs: int = 5):
         """ Args:
                 exp_name: name of the experiment (for the output filename)
                 train: whether the model will be trained
                 load: None to train a new model from scratch, or a path to the model to load
                 train_length: If not None, the length of the training data set, 
                     used to calculate the number of steps before logging and evaluation
+                n_epochs: number of epochs to train
         """
         self.exp_name = exp_name
         if load is None:
@@ -32,7 +33,7 @@ class BertClassifier:
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
             self.tokenizer = AutoTokenizer.from_pretrained(load)
-        self.n_epochs = 5
+        self.n_epochs = n_epochs
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.metrics = {'accuracy': load_metric('accuracy'), 
                 'precision': load_metric('precision'),
@@ -60,11 +61,13 @@ class BertClassifier:
             per_device_eval_batch_size = self.batch_size,
             num_train_epochs=self.n_epochs,
             weight_decay=0.01,
-            evaluation_strategy='steps',
-            save_strategy='steps',
-            logging_steps = self.checkpoint,
-            eval_steps = self.checkpoint,
-            save_steps = self.checkpoint,
+            #evaluation_strategy='steps',
+            evaluation_strategy='epoch',
+            save_strategy='epoch',
+            logging_strategy='epoch',
+            #logging_steps = self.checkpoint,
+            #eval_steps = self.checkpoint,
+            #save_steps = self.checkpoint,
             report_to = report_to,
             run_name=run_name,
         )

@@ -31,7 +31,8 @@ class Experiment:
             train_length = None
             if self.do_train:
                 train_length = len(self.train_pos.data) + len(self.train_neg.data)
-            self.clf = BertClassifier(self.name, self.do_train, load=classifier['load'], train_length=train_length)
+            self.clf = BertClassifier(self.name, self.do_train, load=classifier['load'], train_length=train_length, 
+                n_epochs=classifier['n_epochs'])
         
     def run(self):
         if self.do_train:
