@@ -179,7 +179,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: ws_antiracist_8120_test
+  name: ws_antiracist_8epochs_test
   train: False
   test: True
   train_pos: white_supremacist_train
@@ -190,5 +190,6 @@ experiment: # define experiments where train particular classifiers on particula
     - bias_test
   classifier: 
     type: bert
+    n_epochs: 10
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/ws_antiracist/checkpoint-8120'
+    load: '../output/bert/ws_antiracist_10epochs/checkpoint-87704'

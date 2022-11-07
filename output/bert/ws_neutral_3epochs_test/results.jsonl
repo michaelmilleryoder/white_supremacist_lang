@@ -1,0 +1,6 @@
+{"dataset":"alatawi2021","f1":0.6838709677,"precision":0.586970684,"recall":0.8190909091,"accuracy":0.5832916458}
+{"dataset":"siegel2021","f1":0.5692307692,"precision":0.4004329004,"recall":0.9840425532,"accuracy":0.5534290271}
+{"dataset":"siegel2021_white_nationalist_only","f1":0.4624505929,"precision":0.3007712082,"recall":1.0,"accuracy":0.5107913669}
+{"dataset":"rieger2021","f1":0.1697978597,"precision":0.0930414386,"recall":0.9701086957,"accuracy":0.3237117396}
+{"dataset":"adl_heatmap","f1":0.9602067183,"precision":1.0,"recall":0.9234592445,"accuracy":0.9234592445}
+{"dataset":"hatecheck_identity_nonhate","f1":0.0,"precision":0.0,"recall":0.0,"accuracy":0.2603174603}
