@@ -23,12 +23,17 @@ class Experiment:
         self.do_train = train
         self.do_test = test
         self.test_corpora = test_corpora
+        self.train_data = pd.concat(train_corpora)
         self.clf = None
         if classifier['type'] == 'bert':
             train_length = None
+            n_labels = 3 # TODO: need to consider this for running just evaluation
             if self.do_train:
-                train_length = len(self.train_pos.data) + len(self.train_neg.data)
-            self.clf = BertClassifier(self.name, self.do_train, load=classifier['load'], train_length=train_length, 
+                train_length = sum([len(train_corpus.data) for train_corpus in train_corpora])
+                n_labels = len(self.train_data['label_str'].unique())
+            self.clf = BertClassifier(self.name, self.do_train, load=classifier['load'], 
+                train_length=train_length, 
+                n_labels=n_labels,
                 n_epochs=classifier['n_epochs'])
         
     def run(self):
@@ -39,9 +44,9 @@ class Experiment:
         
     def train(self):
         # Prepare training set, including labels
-        train_data = pd.concat([self.train_pos.data, self.train_neg.data])
-        # TODO: edit here
-        train_data['label'] = train_data['label_str'].
+        #train_data = pd.concat([self.train_pos.data, self.train_neg.data])
+        train_data['label'] = pd.get_dummies(train_data['label_str']).values
+        pdb.set_trace() # check the format of label (want lists for each cell)
 
         # Train
         self.clf.train(train_data)

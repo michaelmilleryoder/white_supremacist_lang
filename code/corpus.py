@@ -20,7 +20,7 @@ class Corpus:
     """
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
-                    sample: tuple[str, int] = ('', -1)):
+                    label = None, sample: tuple[str, int] = ('', -1)):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -29,6 +29,7 @@ class Corpus:
                 datasets: list of dictionaries with names and associated loading paths for datasets
                 ref_corpora: a list of the names of any reference corpora that are used to construct this corpus. 
                         Will be loaded from disk (must already be saved out) if create is True
+                label: 
                 sample: whether to sample a portion of the full corpus. 
                         Tuple of (query to select data, n to sample from that queried data)
                         ('', -1) to take the full corpus

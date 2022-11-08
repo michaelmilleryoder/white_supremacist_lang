@@ -17,18 +17,19 @@ from corpus import Corpus
 
 class BertClassifier:
 
-    def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_epochs: int = 5):
+    def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_labels: int = 2, n_epochs: int = 5):
         """ Args:
                 exp_name: name of the experiment (for the output filename)
                 train: whether the model will be trained
                 load: None to train a new model from scratch, or a path to the model to load
                 train_length: If not None, the length of the training data set, 
                     used to calculate the number of steps before logging and evaluation
+                n_labels: number of labels to be used in classification
                 n_epochs: number of epochs to train
         """
         self.exp_name = exp_name
         if load is None:
-            self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+            self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=n_labels)
             self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
@@ -89,6 +90,7 @@ class BertClassifier:
     def compute_metrics(self, eval_pred):
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
+        pdb.set_trace() # check output format
         return {metric_name: metric.compute(
                 predictions=predictions, references=labels) for metric_name, metric in self.metrics.items()}
 
