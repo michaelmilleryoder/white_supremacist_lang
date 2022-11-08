@@ -39,8 +39,6 @@ def main():
                         config['experiment']['name'],
                         config['experiment']['train'],
                         config['experiment']['test'],
-                        corpora[config['experiment']['train_pos']], 
-                        corpora[config['experiment']['train_neg']], 
                         [corpora[corpus_name] for corpus_name in config['experiment']['test_corpora']], 
                         config['experiment']['classifier'])
         exp.run()

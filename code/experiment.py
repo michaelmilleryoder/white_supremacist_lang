@@ -9,22 +9,19 @@ from corpus import Corpus
 
 class Experiment:
 
-    def __init__(self, name: str, train: bool, test: bool, train_pos: Corpus, train_neg: Corpus, 
-            test_corpora: list[Corpus], classifier: dict):
+    def __init__(self, name: str, train: bool, test: bool, train_corpora: list[Corpus], test_corpora: list[Corpus], 
+        classifier: dict):
         """ Args:
                 name: name of the model for saving out results
                 train: whether to train a model
                 test: whether to evaluate a model
-                train_pos: training corpus of positive class (white supremacist) examples
-                train_neg: training corpus of negative class (non-white supremacist) examples
+                train_corpora: training corpora to be combined and given labels based on `label_str' column
                 test_corpora: evaluation corpora, unseen by the model. Each should already have a column of 'label'
                 classifier: dict of info on the classifier. Should include a key of 'type' with a string in {bert}
         """
         self.name = name
         self.do_train = train
         self.do_test = test
-        self.train_pos = train_pos
-        self.train_neg = train_neg
         self.test_corpora = test_corpora
         self.clf = None
         if classifier['type'] == 'bert':
@@ -41,10 +38,10 @@ class Experiment:
             self.evaluate()
         
     def train(self):
-        # Prepare training set
-        self.train_pos.data['label'] = 1
-        self.train_neg.data['label'] = 0
+        # Prepare training set, including labels
         train_data = pd.concat([self.train_pos.data, self.train_neg.data])
+        # TODO: edit here
+        train_data['label'] = train_data['label_str'].
 
         # Train
         self.clf.train(train_data)

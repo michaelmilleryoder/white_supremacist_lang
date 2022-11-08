@@ -78,6 +78,11 @@ class Corpus:
                 load_path = self.fpath
             print(f"Loading corpus from {load_path}...")
             self.data = self.load_corpus(load_path)
+        # Assign labels
+        if isinstance(self.label, str):
+            self.data['label_str'] = self.label
+        else: # is a dict mapping dataset labels to other labels
+            self.data['label_str'] = self.data.label.map(self.label)
         return self
 
     def sample(self):
