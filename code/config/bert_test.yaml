@@ -4,6 +4,7 @@ corpora:
 
   white_supremacist_train:
     create: False
+    label: white_supremacist
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -85,6 +86,7 @@ corpora:
 
   neutral_train:
     create: False
+    label: neutral
     datasets:
       - name: reddit_match
         source: reddit
@@ -111,6 +113,7 @@ corpora:
 
   antiracist_train:
     create: False
+    label: antiracist
     datasets:
       - name: reddit_antiracist
         source: reddit
@@ -133,6 +136,7 @@ corpora:
 
   annotated_test: # test sets human-annotated for white supremacy
     create: False
+    label: {1: white_supremacist, 0: neutral}
     datasets:
       - name: alatawi2021
         source: twitter
@@ -160,6 +164,7 @@ corpora:
 
   domain_test: # out-of-domain evaluations
     create: False
+    label: white_supremacist
     datasets:
       - name: adl_heatmap
         source: adl_heatmap
@@ -170,6 +175,7 @@ corpora:
 
   bias_test:
     create: False
+    label: neutral # possibly antiracist for positive uses of identities?
     datasets:
       - name: hatecheck_identity_nonhate
         source: hatecheck
@@ -179,17 +185,20 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: ws_antiracist_8epochs_test
+  name: ws_neutral_antiracist_3way_test
   train: False
   test: True
-  train_pos: white_supremacist_train
-  train_neg: antiracist_train
+  train_corpora:
+    - white_supremacist_train
+    - neutral_train
+    - antiracist_train
   test_corpora: 
     - annotated_test
     - domain_test
     - bias_test
+  test_label_combine: {antiracist: neutral}
   classifier: 
     type: bert
     n_epochs: 10
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/ws_antiracist_10epochs/checkpoint-87704'
+    load: '../output/bert/ws_neutral_antiracist_3way/checkpoint-16616'

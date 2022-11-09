@@ -41,7 +41,9 @@ def main():
                         config['experiment']['test'],
                         [corpora[corpus_name] for corpus_name in config['experiment']['train_corpora']], 
                         [corpora[corpus_name] for corpus_name in config['experiment']['test_corpora']], 
-                        config['experiment']['classifier'])
+                        config['experiment']['classifier'],
+                        test_label_combine=config['experiment'].get('test_label_combine', None)
+                        )
         exp.run()
 
 

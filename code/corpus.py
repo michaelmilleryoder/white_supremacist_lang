@@ -29,7 +29,8 @@ class Corpus:
                 datasets: list of dictionaries with names and associated loading paths for datasets
                 ref_corpora: a list of the names of any reference corpora that are used to construct this corpus. 
                         Will be loaded from disk (must already be saved out) if create is True
-                label: 
+                label: classification label to apply to this corpus (string), 
+                        or mapping from dataset labels to corpus labels (dict)
                 sample: whether to sample a portion of the full corpus. 
                         Tuple of (query to select data, n to sample from that queried data)
                         ('', -1) to take the full corpus
@@ -50,6 +51,7 @@ class Corpus:
                 ref_corpus_fpath = self.base_tmp_fpath.format(corpus_name)
                 tqdm.write(f"\tLoading reference corpus {corpus_name}...")
                 ref_corpora[corpus_name] = self.load_corpus(ref_corpus_fpath)
+        self.label = label
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpora=ref_corpora) for ds in datasets]
         self.sample_query, self.sample_n = sample

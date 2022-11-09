@@ -11,13 +11,31 @@ from datasets import Dataset, load_metric
 from transformers import (AutoTokenizer, DataCollatorWithPadding, 
         AutoModelForSequenceClassification, TrainingArguments, Trainer)
 import numpy as np
+import torch
 
 from corpus import Corpus
 
 
+class MultiClassTrainer(Trainer):
+    """ Custom class to handle multiclass classification training """
+    
+    def compute_loss(self, model, inputs, return_outputs=False):
+        #labels = inputs.get('labels')
+        labels = inputs.pop('labels')
+        #outputs = model(**inputs, labels=labels)
+        outputs = model(**inputs)
+        logits = outputs[0]
+        #loss = outputs.loss
+        loss = torch.nn.functional.cross_entropy(logits, labels)
+        #loss = torch.nn.BCEWithLogitsLoss(logits, labels)
+        #loss = torch.nn.CrossEntropyLoss(logits, labels)
+        return (loss, outputs) if return_outputs else loss
+
+
 class BertClassifier:
 
-    def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_labels: int = 2, n_epochs: int = 5):
+    def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_labels: int = 2, 
+        id2label: dict = None, label2id: dict = None, n_epochs: int = 5, test_label_combine: dict = None):
         """ Args:
                 exp_name: name of the experiment (for the output filename)
                 train: whether the model will be trained
@@ -25,11 +43,18 @@ class BertClassifier:
                 train_length: If not None, the length of the training data set, 
                     used to calculate the number of steps before logging and evaluation
                 n_labels: number of labels to be used in classification
+                id2label: mapping of class IDs to class names
+                label2id: mapping of class names to class IDs
                 n_epochs: number of epochs to train
+                test_label_combine: a dictionary of any changes of predicted labels to make 
+                    (to combine 3-way to 2-way classification, eg)
         """
         self.exp_name = exp_name
+        self.id2label = id2label
+        self.label2id = label2id
         if load is None:
-            self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=n_labels)
+            self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=n_labels,
+                id2label=self.id2label, label2id=self.label2id)
             self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
@@ -40,12 +65,24 @@ class BertClassifier:
                 'precision': load_metric('precision'),
                 'recall': load_metric('recall'),
                'f1': load_metric('f1')}
+        self.test_label_combine = test_label_combine
+        #if n_labels == 2:
+        #    self.metrics = {'accuracy': load_metric('accuracy'), 
+        #            'precision': load_metric('precision'),
+        #            'recall': load_metric('recall'),
+        #           'f1': load_metric('f1')}
+        #else:
+        #    self.metrics = {'accuracy': load_metric('accuracy'), 
+        #            'precision': load_metric('precision', average=None),
+        #            'recall': load_metric('recall', average=None),
+        #           'f1': load_metric('f1', average=None)}
         self.batch_size = 16
         if train_length is None:
             self.checkpoint = self.batch_size * int(2e3)
         else:
-            total_steps = (int(train_length/self.batch_size) + 1) * self.n_epochs
-            self.checkpoint = int(total_steps/30)
+            #total_steps = (int(train_length/self.batch_size) + 1) * self.n_epochs
+            #self.checkpoint = int(total_steps/30)
+            self.checkpoint = 100 # for debugging
         self.output_dir = f"../output/bert/{self.exp_name}"
         if train:
             report_to = 'wandb'
@@ -74,10 +111,15 @@ class BertClassifier:
         )
         self.train_data = None
         self.train_tokenized = None
+        #if n_labels > 2:
+        #    self.trainer_class = MultiClassTrainer
+        #else:
+        #    self.trainer_class = Trainer
+        self.trainer_class = Trainer
         if train:
             self.trainer = None
         else:
-            self.trainer = Trainer(
+            self.trainer = self.trainer_class(
                 model = self.model,
                 args = self.training_args,
                 tokenizer = self.tokenizer,
@@ -90,9 +132,18 @@ class BertClassifier:
     def compute_metrics(self, eval_pred):
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
-        pdb.set_trace() # check output format
-        return {metric_name: metric.compute(
-                predictions=predictions, references=labels) for metric_name, metric in self.metrics.items()}
+        if self.test_label_combine is not None:
+            predictions = [self.label2id[self.test_label_combine.get(self.id2label[pred], 
+                self.id2label[pred])] for pred in predictions]
+        results = {}
+        for metric_name, metric in self.metrics.items():
+            if metric_name in ['precision', 'recall', 'f1']:
+                unique_labels = sorted(set(labels))
+                results[metric_name] = {k: {self.id2label[unique_labels[i]]: val for i, val in enumerate(result)} for (k, 
+                    result) in metric.compute(predictions=predictions, references=labels, average=None).items()}
+            else:
+                results[metric_name] = metric.compute(predictions=predictions, references=labels)
+        return results
 
     def train(self, data: pd.DataFrame):
         """ Train the classifier.
@@ -103,7 +154,7 @@ class BertClassifier:
         #self.trainer.train_dataset = self.train_tokenized["train"],
         #self.trainer.eval_dataset = self.train_tokenized["test"],
         # Tried and failed to specify most of the params in init and just specify train and eval datasets here
-        self.trainer = Trainer(
+        self.trainer = self.trainer_class(
             model = self.model,
             args = self.training_args,
             train_dataset = self.train_tokenized["train"],
@@ -148,11 +199,15 @@ class BertClassifier:
                 selected = corpus.data.query('dataset==@dataset')
                 test_data, test_tokenized = self.prepare_dataset(selected, split=False)
                 res = self.trainer.evaluate(test_tokenized)
-                result_lines.append(
-                    {'dataset': dataset, 'f1': res['eval_f1']['f1'], 
-                    'precision': res['eval_precision']['precision'],
-                     'recall': res['eval_recall']['recall'], 'accuracy': res['eval_accuracy']['accuracy']}
-                )
+                for metric in ['precision', 'recall', 'f1']:
+                    for label, value in res[f'eval_{metric}'][metric].items():
+                        result_line = {'dataset': dataset,
+                            'metric': metric,
+                            'label': label,
+                            'value': value
+                        }
+                        result_lines.append(result_line)
+                result_lines.append({'dataset': dataset, 'metric': 'accuracy', 'value': res['eval_accuracy']['accuracy']})
                 pred_output = self.trainer.predict(test_tokenized)
                 preds = np.argmax(pred_output.predictions, axis=-1)
                 pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.txt')
