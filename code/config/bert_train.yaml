@@ -5,6 +5,7 @@ corpora:
   white_supremacist_train:
     create: False
     label: white_supremacist
+    min_word_limit: 10
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -87,6 +88,7 @@ corpora:
   neutral_train:
     create: False
     label: neutral
+    min_word_limit: 1
     datasets:
       - name: reddit_match
         source: reddit
@@ -114,6 +116,7 @@ corpora:
   antiracist_train:
     create: False
     label: antiracist
+    min_word_limit: 1
     datasets:
       - name: reddit_antiracist
         source: reddit

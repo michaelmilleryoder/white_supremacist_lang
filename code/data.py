@@ -48,7 +48,7 @@ class Dataset:
         return set(cls.__subclasses__()).union(
             [s for c in cls.__subclasses__() for s in c.all_subclasses()])
 
-    def __new__(cls, name, source, domain, load_paths, ref_corpora=None):
+    def __new__(cls, name, source, domain, load_paths, ref_corpora=None, min_word_limit=1):
         """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
         #subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
@@ -58,7 +58,7 @@ class Dataset:
         instance = super(Dataset, subclass).__new__(subclass)
         return instance
 
-    def __init__(self, name, source, domain, load_paths, ref_corpora=None):
+    def __init__(self, name, source, domain, load_paths, ref_corpora=None, min_word_limit=1):
         """ Args:
                 name: dataset name
                 source: source platform
@@ -66,6 +66,7 @@ class Dataset:
                 load_paths: list of arguments for loading the datasets (like file paths)
                 ref_corpora: a dict with keys as corpora names and values dataframes of other corpora 
                     to use in assembling this dataset
+                min_word_limit: Minimum word limit of posts. Put 1 to take all posts
         """
         self.name = name
         self.source = source
@@ -78,11 +79,12 @@ class Dataset:
             for name, corpus in ref_corpora.items():
                 self.ref_corpora[name] = corpus.query(f'domain=="{domain}"').copy()
                 self.lookup[name] = corpus_year_count(self.ref_corpora[name])
+        self.min_word_limit = min_word_limit
         self.n_jobs = 20 # number of processes for multiprocessing of data
         self.data = pd.DataFrame()
         #cls.get_subclass()
 
-    def uniform_format(self, timestamp_col=None, min_word_limit=10, unit=None, format=None, errors='raise'):
+    def uniform_format(self, timestamp_col=None, unit=None, format=None, errors='raise'):
         """ Format the dataframe for combining with other datasets
             Set a column to a timestamp data type if there is one
             Create an index for the dataset with the dataset name.
@@ -92,7 +94,6 @@ class Dataset:
                 text, word_count, timestamp (if present), dataset, source, domain
             Args:
                 timestamp_col: the name of a column to convert to a datetime data type. If None, no timestamp
-                min_word_limit: Minimum word limit of posts. Put 1 to take all posts
                 unit: Additional parameter to pass to pd.to_datetime
                 format: Additional parameter to pass to pd.to_datetime
                 errors: Additional parameter to pass to pd.to_datetime
@@ -104,7 +105,7 @@ class Dataset:
         #self.data = self.data[self.data['text'].str.split().str.len() >= min_word_limit]
         #with Pool(self.n_jobs) as p:
         #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=80))
-        self.data = self.data[self.data['word_count'] >= min_word_limit]
+        self.data = self.data[self.data['word_count'] >= self.min_word_limit]
         if timestamp_col is not None:
             self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
         self.data['dataset'] = self.name
@@ -493,7 +494,6 @@ class Discord_matchDataset(Dataset):
             Process data for combining with other datasets in neutral corpus.
         """
         # Compute the avg words per post
-        min_word_limit = 10
         tokenizer = TweetTokenizer(strip_handles=True)
         #sample = self.data.sample(10000).copy()
         #zipped_sample = zip(sample['message'], itertools.repeat(tokenizer))
@@ -518,7 +518,7 @@ class Discord_matchDataset(Dataset):
             with Pool(self.n_jobs) as p:
                 sample['text'], sample['word_count'] = list(zip(*p.starmap(
                         process_chat, zipped)))
-                filtered = sample[sample.word_count > min_word_limit]
+                filtered = sample[sample.word_count >= self.min_word_limit]
             sample_words = filtered.word_count.sum()
             sampled_words += sample_words
             sampled.append(filtered)
@@ -602,7 +602,7 @@ class Alatawi2021Dataset(Dataset):
         """ Process data for evaluating classifiers based on other datasets. """
         self.data['text'], self.data['word_count'] = list(zip(*self.data['input.text'].map(tokenize_lowercase)))
         self.data['label'] = self.data['Voting and Final Labels']
-        self.uniform_format(min_word_limit=0)
+        self.uniform_format()
 
 
 class Siegel2021Dataset(Dataset):
@@ -639,7 +639,7 @@ class Siegel2021Dataset(Dataset):
         tokenizer = TweetTokenizer(strip_handles=True)
         self.data['text'] = [process_tweet_text(text, tokenizer) for text in self.data['text']]
         self.data['label'] = self.data['white_nationalism'].map(lambda x: 1 if x=='yes' else 0)
-        self.uniform_format(min_word_limit=0)
+        self.uniform_format()
 
 
 class Siegel2021_white_nationalist_onlyDataset(Siegel2021Dataset):
@@ -684,7 +684,7 @@ class Adl_heatmapDataset(Dataset):
     def process(self):
         self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].map(tokenize_lowercase)))
         self.data['label'] = 1 # all labeled as white supremacist
-        self.uniform_format(min_word_limit=1)
+        self.uniform_format()
 
 
 class Rieger2021Dataset(Dataset):
@@ -774,7 +774,7 @@ class Rieger2021Dataset(Dataset):
         self.data['text'], self.data['word_count'] = list(zip(*self.data['Text'].map(process_rieger2021)))
         self.data = self.data[self.data['text'] != '']
         self.data['label'] = self.data['white_supremacist'].astype(int)
-        self.uniform_format(min_word_limit=0)
+        self.uniform_format()
 
 
 class Hatecheck_identity_nonhateDataset(Dataset):
@@ -788,7 +788,7 @@ class Hatecheck_identity_nonhateDataset(Dataset):
     def process(self):
         self.data['text'], self.data['word_count'] = list(zip(*self.data.test_case.map(tokenize_lowercase)))
         self.data['label'] = 0
-        self.uniform_format(min_word_limit=0)
+        self.uniform_format()
 
 
 class Medium_antiracistDataset(Dataset):

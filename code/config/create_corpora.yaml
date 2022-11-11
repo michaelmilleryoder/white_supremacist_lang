@@ -3,7 +3,10 @@
 corpora:
 
   white_supremacist_train:
-    create: False
+    create: True
+    label: white_supremacist
+    min_word_limit: 10
+    sample: ['domain=="forum"', 100000] # [query to select data, n to sample from that queried data]
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -82,10 +85,11 @@ corpora:
         domain: long-form
         load_paths:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
-    sample: ['domain=="forum"', 90000] # [query to select data, n to sample from that queried data]
 
   neutral_train:
-    create: False
+    create: True
+    label: neutral
+    min_word_limit: 1
     datasets:
       - name: discord_match
         source: discord
@@ -111,7 +115,9 @@ corpora:
       - 'white_supremacist_train'
 
   antiracist_train:
-    create: False
+    create: True
+    label: antiracist
+    min_word_limit: 1
     datasets:
       - name: reddit_antiracist
         source: reddit
@@ -133,7 +139,8 @@ corpora:
       - 'neutral_train'
 
   annotated_test: # test sets human-annotated for white supremacy
-    create: True
+    create: False
+    label: {1: white_supremacist, 0: neutral}
     datasets:
       - name: alatawi2021
         source: twitter
@@ -154,7 +161,8 @@ corpora:
           - '../data/siegel2021/hate_speech_training_data.csv'
 
   domain_test: # out-of-domain evaluations
-    create: True
+    create: False
+    label: white_supremacist
     datasets:
       - name: adl_heatmap
         source: adl_heatmap
@@ -164,7 +172,8 @@ corpora:
           - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
     
   bias_test:
-    create: True
+    create: False
+    label: neutral # possibly antiracist for positive uses of identities?
     datasets:
       - name: hatecheck_identity_nonhate
         source: hatecheck
@@ -177,10 +186,16 @@ experiment: # define experiments where train particular classifiers on particula
   name: Null
   train: False
   test: False
-  train_pos: white_supremacist_train
-  train_neg: neutral_train
-  test_corpus: annotated_test
-  test_by_dataset: True # whether to give evaluations for each dataset separately in the test corpus
+  train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
+    - white_supremacist_train
+    - neutral_train
+    - antiracist_train
+  test_corpora: 
+    - annotated_test
+    - domain_test
+    - bias_test
   classifier: 
     type: bert
+    n_epochs: 10
     load: Null # Null to train a new model from scratch, or a path to the model to load
+    #load: '../output/bert/checkpoint-778326' # Null to train a new model from scratch, or a path to the model to load

@@ -20,7 +20,7 @@ class Corpus:
     """
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
-                    label = None, sample: tuple[str, int] = ('', -1)):
+                    min_word_limit: int = 1, label = None, sample: tuple[str, int] = ('', -1)):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -29,6 +29,7 @@ class Corpus:
                 datasets: list of dictionaries with names and associated loading paths for datasets
                 ref_corpora: a list of the names of any reference corpora that are used to construct this corpus. 
                         Will be loaded from disk (must already be saved out) if create is True
+                min_word_limit: Minimum word limit of posts. Put 1 to take all posts
                 label: classification label to apply to this corpus (string), 
                         or mapping from dataset labels to corpus labels (dict)
                 sample: whether to sample a portion of the full corpus. 
@@ -53,7 +54,8 @@ class Corpus:
                 ref_corpora[corpus_name] = self.load_corpus(ref_corpus_fpath)
         self.label = label
         self.datasets = [Dataset(
-                ds['name'], ds['source'], ds['domain'], ds['load_paths'], ref_corpora=ref_corpora) for ds in datasets]
+                ds['name'], ds['source'], ds['domain'], ds['load_paths'], 
+                ref_corpora=ref_corpora, min_word_limit=min_word_limit) for ds in datasets]
         self.sample_query, self.sample_n = sample
         self.data = None
 
@@ -102,7 +104,8 @@ class Corpus:
         self.data['num_words'] = self.data.text.str.split().str.len()
         stats = self.data.groupby('domain').agg({'num_words': ['count', 'sum', 'mean']})
         stats.columns = ['post_count', 'word_count', 'avg_post_words']
-        total = pd.DataFrame({'post_count': len(self.data), 'word_count': self.data.num_words.sum()}, index=['total'])
+        total = pd.DataFrame({'post_count': len(self.data), 'word_count': self.data.num_words.sum(),
+            'avg_post_words': self.data.num_words.mean()}, index=['total'])
         stats = pd.concat([stats,total])
         stats['post%'] = stats['post_count']/stats.loc['total', 'post_count']
         stats['word%'] = stats['word_count']/stats.loc['total', 'word_count']

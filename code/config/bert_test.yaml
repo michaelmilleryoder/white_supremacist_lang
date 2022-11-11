@@ -185,7 +185,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: ws_neutral_antiracist_3way_test
+  name: 3way_40974_test
   train: False
   test: True
   train_corpora:
@@ -201,4 +201,4 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     n_epochs: 10
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/ws_neutral_antiracist_3way/checkpoint-16616'
+    load: '../output/bert/ws_neutral_antiracist_3way/checkpoint-40974'

@@ -138,9 +138,18 @@ class BertClassifier:
         results = {}
         for metric_name, metric in self.metrics.items():
             if metric_name in ['precision', 'recall', 'f1']:
-                unique_labels = sorted(set(labels))
-                results[metric_name] = {k: {self.id2label[unique_labels[i]]: val for i, val in enumerate(result)} for (k, 
-                    result) in metric.compute(predictions=predictions, references=labels, average=None).items()}
+                unique_labels = sorted(set(predictions + labels.tolist()))
+                results[metric_name] = {}
+                for k, result in metric.compute(predictions=predictions, references=labels, average=None).items():
+                    results[metric_name][k] = {}
+                    for i, val in enumerate(result):
+                        label_idx = unique_labels[i]
+                        if not label_idx in self.id2label:
+                            pdb.set_trace()
+                        label = self.id2label[label_idx]
+                        results[metric_name][k][label] = val
+                #results[metric_name] = {k: {self.id2label[unique_labels[i]]: val for i, val in enumerate(result)} for (k, 
+                #    result) in metric.compute(predictions=predictions, references=labels, average=None).items()}
             else:
                 results[metric_name] = metric.compute(predictions=predictions, references=labels)
         return results
@@ -210,8 +219,12 @@ class BertClassifier:
                 result_lines.append({'dataset': dataset, 'metric': 'accuracy', 'value': res['eval_accuracy']['accuracy']})
                 pred_output = self.trainer.predict(test_tokenized)
                 preds = np.argmax(pred_output.predictions, axis=-1)
-                pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.txt')
-                np.savetxt(pred_outpath, preds)
+                # Save out numeric predictions
+                #pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.txt')
+                #np.savetxt(pred_outpath, preds)
+                # Save out class name predictions
+                pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.json')
+                preds_classnames = pd.Series(preds).map(self.id2label).to_json(pred_outpath)
         results = pd.DataFrame(result_lines)
         outpath = os.path.join(self.output_dir, 'results.jsonl')
         results.to_json(outpath, orient='records', lines=True)
