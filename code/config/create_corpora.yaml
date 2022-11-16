@@ -6,6 +6,10 @@ corpora:
     create: True
     label: white_supremacist
     min_word_limit: 10
+    lda_filter: # remove posts that match certain topics in a trained LDA model
+      query: 'domain=="forum"'
+      model: '../models/ws_forum_lda30.pkl'
+      exclude_topics: []
     sample: ['domain=="forum"', 100000] # [query to select data, n to sample from that queried data]
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018

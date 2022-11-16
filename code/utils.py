@@ -119,11 +119,12 @@ def process_article(inp):
     return tokenize_lowercase(text)
 
 
-def process_chat(text, tokenizer):
+def process_chat(text, tokenizer, remove_list=None):
     """ Process Discord chat from a random sample dataset 
         Args:
             text: input text as a string
             tokenizer: the tokenizer to use (expecting NLTK TweetTokenizer)
+            remove_list: optional list of terms to remove
     """
     if ': ' in text:
         res =  text.split(': ')[1]
@@ -132,6 +133,8 @@ def process_chat(text, tokenizer):
     res = re.sub(r'<@\d+>', '', res)
     res = remove_urls(res)
     tokens = tokenizer.tokenize(res)
+    if remove_list is not None:
+        tokens = [tok for tok in tokenizer.tokenize(res) if tok not in remove_list]
     n_tokens = len(tokens)
     return (' '.join(tokens).lower(), n_tokens)
 
@@ -168,9 +171,3 @@ def process_rieger2021(text):
     text = remove_special(str(text))
     # Tokenize
     return tokenize_lowercase(text)
-
-
-def tokenize_remove(text, remove):
-    """ Tokenize and remove any matches from a list (remove) """
-    tokens = [wd for wd in nltk.word_tokenize(str(text)) if wd not in remove]
-    return (' '.join(tokens).lower(), len(tokens))

@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
         process_tweet, process_tweet_text, process_article, process_reddit, process_chat, 
-        load_now, process_now, process_rieger2021, tokenize_remove)
+        load_now, process_now, process_rieger2021)
 
 
 def corpus_year_count(corpus):
@@ -106,6 +106,7 @@ class Dataset:
         #with Pool(self.n_jobs) as p:
         #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=80))
         self.data = self.data[self.data['word_count'] >= self.min_word_limit]
+        self.data.drop_duplicates(subset='text', keep='first', inplace=True)
         if timestamp_col is not None:
             self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
         self.data['dataset'] = self.name
@@ -148,6 +149,8 @@ class RawTwitter(Dataset):
             text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
             self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), 
             total=len(self.data), ncols=80)]))
+        self.data = self.data[~self.data.processed_text.str.contains(
+            "account is temporarily unavailable because it violates the twitter media policy")]
         self.data.drop(columns='text', inplace=True)
         self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='created_at')
@@ -222,8 +225,13 @@ class PatriotfrontDataset(Dataset):
         common_names = set(names['Name'].str.lower()).union(names['Name.1'].str.lower())
         # Remove spencer, guy (for Richard Spencer)
         common_names -= {'spencer', 'guy'}
-        self.data['text'], self.data['word_count'] = list(zip(*[tokenize_remove(
-            text, common_names) for text in self.data['message']]))
+
+        tokenizer = TweetTokenizer(strip_handles=True)
+        #zipped = zip(self.data['message'], itertools.repeat(tokenizer), itertools.repeat(common_names))
+        self.data['text'], self.data['word_count'] = list(zip(*[process_chat(
+            m, tokenizer, common_names) for m in self.data['message']]))
+        #self.data['text'], self.data['word_count'] = list(zip(*[tokenize_remove(
+        #    text, common_names) for text in self.data['message']]))
         self.uniform_format(timestamp_col='timestamp')
 
 

@@ -6,6 +6,7 @@
 """
 
 import os
+import pickle
 import pdb
 
 import pandas as pd
@@ -20,7 +21,7 @@ class Corpus:
     """
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
-                    min_word_limit: int = 1, label = None, sample: tuple[str, int] = ('', -1)):
+                    min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: tuple[str, int] = ('', -1)):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -32,6 +33,9 @@ class Corpus:
                 min_word_limit: Minimum word limit of posts. Put 1 to take all posts
                 label: classification label to apply to this corpus (string), 
                         or mapping from dataset labels to corpus labels (dict)
+                lda_filter: dict with information to remove posts that match certain topics in a trained LDA model.
+                        Includes 'model' with path to the trained model (sklearn LatentDirichletAllocation object), 
+                        'query' of posts to consider removing, 'exclude_topics' with a list of topics to exclude
                 sample: whether to sample a portion of the full corpus. 
                         Tuple of (query to select data, n to sample from that queried data)
                         ('', -1) to take the full corpus
@@ -56,6 +60,7 @@ class Corpus:
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], 
                 ref_corpora=ref_corpora, min_word_limit=min_word_limit) for ds in datasets]
+        self.lda_filter = lda_filter
         self.sample_query, self.sample_n = sample
         self.data = None
 
@@ -71,6 +76,8 @@ class Corpus:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs)
+            if self.lda_filter is not None:
+                self.filter_lda()
             if self.sample_n > 0:
                 self.sample()
             self.print_save_stats()
@@ -89,6 +96,14 @@ class Corpus:
         else: # is a dict mapping dataset labels to other labels
             self.data['label_str'] = self.data.label.map(self.label)
         return self
+
+    def filter_lda(self):
+        """ Remove posts that match certain topics in a trained LDA model """
+        # Load trained model
+        print("Filtering by LDA topics...")
+        with open(self.lda_filter['model'], 'rb') as f:
+            lda = pickle.load(f)
+        # Infer
 
     def sample(self):
         """ Sample particular portions of the corpus """

@@ -188,7 +188,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: ws_neutral_antiracist_3way
+  name: 3way
   train: True
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
