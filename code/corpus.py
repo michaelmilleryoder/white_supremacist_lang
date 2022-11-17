@@ -9,8 +9,10 @@ import os
 import pickle
 import pdb
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from sklearn.feature_extraction.text import CountVectorizer
 
 from data import Dataset
 
@@ -75,7 +77,7 @@ class Corpus:
                 if self.ref_corpora is not None:
                     dataset.print_stats()
                 dfs.append(dataset.data)
-            self.data = pd.concat(dfs)
+            self.data = pd.concat(dfs).drop_duplicates(subset='text')
             if self.lda_filter is not None:
                 self.filter_lda()
             if self.sample_n > 0:
@@ -99,11 +101,24 @@ class Corpus:
 
     def filter_lda(self):
         """ Remove posts that match certain topics in a trained LDA model """
-        # Load trained model
+        # Load trained model, vectorizer
         print("Filtering by LDA topics...")
         with open(self.lda_filter['model'], 'rb') as f:
             lda = pickle.load(f)
-        # Infer
+        with open(self.lda_filter['vectorizer'], 'rb') as f:
+            vectorizer = pickle.load(f)
+        selected = self.data.query(self.lda_filter['query']).copy()
+        rest = self.data[~self.data.index.isin(selected.index)]
+
+        # Infer topics on documents
+        bow = vectorizer.transform(selected.text)
+        doc_topics = lda.transform(bow)
+        assigned_topics = np.argmax(doc_topics, axis=1)
+        
+        # Filter out documents with certain topics
+        selected['topic'] = assigned_topics
+        filtered = selected[~selected.topic.isin(self.lda_filter['exclude_topics'])]
+        self.data = pd.concat([filtered.drop(columns='topic'), rest]).sort_index()
 
     def sample(self):
         """ Sample particular portions of the corpus """

@@ -81,12 +81,15 @@ def process_reddit(inp):
 
 
 class MLStripper(HTMLParser):
+
     def __init__(self):
         super().__init__()
         self.reset()
         self.fed = []
+
     def handle_data(self, d):
         self.fed.append(d)
+
     def get_data(self):
         return ' '.join(self.fed)
 
@@ -130,7 +133,7 @@ def process_chat(text, tokenizer, remove_list=None):
         res =  text.split(': ')[1]
     else:
         res = text
-    res = re.sub(r'<@\d+>', '', res)
+    res = re.sub(r'<@!?\d+>', '', res)
     res = remove_urls(res)
     tokens = tokenizer.tokenize(res)
     if remove_list is not None:

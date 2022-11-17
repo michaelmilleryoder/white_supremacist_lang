@@ -16,6 +16,7 @@ import nltk
 from nltk.tokenize import TweetTokenizer
 from tqdm import tqdm
 
+import utils
 from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
         process_tweet, process_tweet_text, process_article, process_reddit, process_chat, 
         load_now, process_now, process_rieger2021)
@@ -106,6 +107,8 @@ class Dataset:
         #with Pool(self.n_jobs) as p:
         #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=80))
         self.data = self.data[self.data['word_count'] >= self.min_word_limit]
+        if self.name == 'calderon2021':
+            pdb.set_trace()
         self.data.drop_duplicates(subset='text', keep='first', inplace=True)
         if timestamp_col is not None:
             self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
@@ -197,7 +200,6 @@ class Elsherief2021Dataset(RawTwitter):
         white_grievance = stg2.query('implicit_class=="white_grievance" or extra_implicit_class=="white_grievance"').rename(columns={'post': 'text'})
 
         # Add white grievance to hydrated and filtered ElSherief+2021 tweets
-        # May have duplicates (and could remove them if I match them with tweet ids)
         self.data = pd.concat([white_grievance, user_matches]).drop_duplicates(subset='id').reset_index(drop=True)
         self.data.rename(columns={'id': 'tweet_id'}, inplace=True)
         
@@ -360,12 +362,9 @@ class Papasavva2020Dataset(Dataset):
             dfs.append(pd.read_csv(fpath, low_memory=False))
         jokubausaite2020_ids = pd.concat(dfs).reset_index(drop=True)['id']
         self.data = self.data[~self.data.id.isin(jokubausaite2020_ids)]
-
         with Pool(self.n_jobs) as p:
-            self.data['processed'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
+            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
                     total=len(self.data), ncols=80)))
-        self.data.rename(columns={'processed': 'text'}, inplace=True)
-
         self.uniform_format(timestamp_col='time', unit='s')
 
 
