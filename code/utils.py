@@ -67,9 +67,12 @@ def process_tweet_text(text, tokenizer):
     return (new_text.lower(), n_tokens)
 
 
-def tokenize_lowercase(inp):
-    """ Tokenize and lowercase text """
-    tokens = nltk.word_tokenize(str(inp))
+def tokenize_lowercase(inp, nlp=None):
+    """ Tokenize and lowercase text with NLTK """
+    if nlp is not None:
+        tokens = [tok.text for tok in nlp.tokenizer(inp)]
+    else:
+        tokens = nltk.word_tokenize(str(inp))
     n_tokens = len(tokens)
     return (' '.join(tokens).lower(), n_tokens)
 
@@ -107,14 +110,14 @@ def remove_special(text):
     return text
 
 
-def process_4chan(text):
+def process_4chan(text, nlp):
     """ Preprocess 4chan data """
     # Remove HTML
     text = strip_tags(str(text))
     text = re.sub(r'\s+', ' ', text).strip()
     # Remove special characters
     text = remove_special(text)
-    return tokenize_lowercase(text)
+    return tokenize_lowercase(text, nlp)
 
 
 def process_article(inp):

@@ -23,7 +23,7 @@ class Corpus:
     """
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
-                    min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: tuple[str, int] = ('', -1)):
+                    min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: dict = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -38,9 +38,9 @@ class Corpus:
                 lda_filter: dict with information to remove posts that match certain topics in a trained LDA model.
                         Includes 'model' with path to the trained model (sklearn LatentDirichletAllocation object), 
                         'query' of posts to consider removing, 'exclude_topics' with a list of topics to exclude
-                sample: whether to sample a portion of the full corpus. 
-                        Tuple of (query to select data, n to sample from that queried data)
-                        ('', -1) to take the full corpus
+                sample: dict of info on sample a portion of the full corpus, or None if not sampling
+                        query: to select data, 
+                        sample_n: n to sample from that queried data
         """
         self.name = name
         self.base_dirpath = '../data/corpora'
@@ -63,7 +63,7 @@ class Corpus:
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], 
                 ref_corpora=ref_corpora, min_word_limit=min_word_limit) for ds in datasets]
         self.lda_filter = lda_filter
-        self.sample_query, self.sample_n = sample
+        self.sample_info = sample
         self.data = None
 
     def load(self):
@@ -80,7 +80,7 @@ class Corpus:
             self.data = pd.concat(dfs).drop_duplicates(subset='text')
             if self.lda_filter is not None:
                 self.filter_lda()
-            if self.sample_n > 0:
+            if self.sample_info is not None:
                 self.sample()
             self.print_save_stats()
             self.save()
@@ -100,15 +100,18 @@ class Corpus:
         return self
 
     def filter_lda(self):
-        """ Remove posts that match certain topics in a trained LDA model """
+        """ Remove posts, or only select posts, that match certain topics in a trained LDA model """
         # Load trained model, vectorizer
         print("Filtering by LDA topics...")
         with open(self.lda_filter['model'], 'rb') as f:
             lda = pickle.load(f)
         with open(self.lda_filter['vectorizer'], 'rb') as f:
             vectorizer = pickle.load(f)
-        selected = self.data.query(self.lda_filter['query']).copy()
-        rest = self.data[~self.data.index.isin(selected.index)]
+        if self.lda_filter['query'] is None:
+            selected = self.data
+        else:
+            selected = self.data.query(self.lda_filter['query']).copy()
+            rest = self.data[~self.data.index.isin(selected.index)]
 
         # Infer topics on documents
         bow = vectorizer.transform(selected.text)
@@ -117,14 +120,21 @@ class Corpus:
         
         # Filter out documents with certain topics
         selected['topic'] = assigned_topics
-        filtered = selected[~selected.topic.isin(self.lda_filter['exclude_topics'])]
-        self.data = pd.concat([filtered.drop(columns='topic'), rest]).sort_index()
+        filtered = selected
+        if self.lda_filter['include_topics'] is not None:
+            filtered = filtered[filtered.topic.isin(self.lda_filter['include_topics'])]
+        if self.lda_filter['exclude_topics'] is not None:
+            filtered = filtered[~filtered.topic.isin(self.lda_filter['exclude_topics'])]
+        if self.lda_filter['query'] is None:
+            self.data = filtered
+        else:
+            self.data = pd.concat([filtered.drop(columns='topic'), rest]).sort_index()
 
     def sample(self):
         """ Sample particular portions of the corpus """
-        selected = self.data.query(self.sample_query)
+        selected = self.data.query(self.sample_info['query'])
         rest = self.data[~self.data.index.isin(selected.index)]
-        sampled = selected.sample(self.sample_n)
+        sampled = selected.sample(self.sample_info['sample_n'])
         self.data = pd.concat([sampled, rest]).sort_index()
 
     def print_save_stats(self):
@@ -132,15 +142,14 @@ class Corpus:
             (#posts, #words per domain type, overall)
         """
         self.data['num_words'] = self.data.text.str.split().str.len()
-        stats = self.data.groupby('domain').agg({'num_words': ['count', 'sum', 'mean']})
-        stats.columns = ['post_count', 'word_count', 'avg_post_words']
-        total = pd.DataFrame({'post_count': len(self.data), 'word_count': self.data.num_words.sum(),
+        stats = self.data.groupby('domain').agg({'num_words': ['count', 'sum', 'mean']}).reset_index()
+        stats.columns = ['domain', 'post_count', 'word_count', 'avg_post_words']
+        total = pd.DataFrame({'domain': 'all', 'post_count': len(self.data), 'word_count': self.data.num_words.sum(),
             'avg_post_words': self.data.num_words.mean()}, index=['total'])
         stats = pd.concat([stats,total])
         stats['post%'] = stats['post_count']/stats.loc['total', 'post_count']
         stats['word%'] = stats['word_count']/stats.loc['total', 'word_count']
-        stats = stats[['post_count', 'post%', 'word_count', 'word%', 'avg_post_words']]
-        stats.index.name = 'domain'
+        stats = stats[['domain', 'post_count', 'post%', 'word_count', 'word%', 'avg_post_words']]
         print(f"Corpus {self.name} stats:")
         print(stats)
         stats.to_json(self.stats_fpath, orient='records', lines=True)

@@ -130,15 +130,17 @@ class BertClassifier:
         self.test_tokenized = None
 
     def compute_metrics(self, eval_pred):
+        # TODO: Add in evaluation on external corpora
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
+        #predictions = self.return_preds(logits)
         if self.test_label_combine is not None:
-            predictions = [self.label2id[self.test_label_combine.get(self.id2label[pred], 
-                self.id2label[pred])] for pred in predictions]
+            predictions = np.array([self.label2id[self.test_label_combine.get(self.id2label[pred], 
+                self.id2label[pred])] for pred in predictions])
         results = {}
         for metric_name, metric in self.metrics.items():
             if metric_name in ['precision', 'recall', 'f1']:
-                unique_labels = sorted(set(predictions + labels.tolist()))
+                unique_labels = sorted(set(predictions.tolist() + labels.tolist()))
                 results[metric_name] = {}
                 for k, result in metric.compute(predictions=predictions, references=labels, average=None).items():
                     results[metric_name][k] = {}
@@ -153,6 +155,18 @@ class BertClassifier:
             else:
                 results[metric_name] = metric.compute(predictions=predictions, references=labels)
         return results
+
+    def return_preds(self, logits):
+        """ Return predictions based on customized decision thresholds for classes """
+        white_supremacist_idx = self.label2id['white_supremacist']
+
+        # Modify logits to prioritize higher precision
+        ws_shift = -5
+        modified = logits.copy()
+        modified[:,white_supremacist_idx] = modified[:,white_supremacist_idx] + ws_shift
+        
+        return np.argmax(modified, axis=-1)
+        
 
     def train(self, data: pd.DataFrame):
         """ Train the classifier.

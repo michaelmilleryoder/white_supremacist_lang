@@ -6,12 +6,18 @@ corpora:
     create: True
     label: white_supremacist
     min_word_limit: 10
-    lda_filter: # remove posts that match certain topics in a trained LDA model
-      query: 'domain=="forum"'
-      model: '../models/ws_forum_lda30.pkl'
-      vectorizer: '../models/ws_forum_countvectorizer.pkl'
-      exclude_topics: [0,3,24,7,11,1,8,29,23,15,16,20,5,17]
-    sample: ['domain=="forum"', 100000] # [query to select data, n to sample from that queried data]
+    #lda_filter: Null
+    lda_filter: # remove posts that match certain topics in a trained LDA model. Put Null if not using
+      #query: 'domain=="forum"'
+      query: Null
+      model: '../models/ws_fulltext_lda30.pkl'
+      vectorizer: '../models/ws_fulltext_countvectorizer.pkl'
+      include_topics: [27,0,13,29]
+      exclude_topics: Null
+    #sample: Null
+    sample: # Put Null if not using
+      query: 'domain=="forum"' # query to select data
+      sample_n: 100000 # n to sample from that queried data 
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -92,7 +98,7 @@ corpora:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
 
   neutral_train:
-    create: True
+    create: False
     label: neutral
     min_word_limit: 1
     datasets:
@@ -120,7 +126,7 @@ corpora:
       - 'white_supremacist_train'
 
   antiracist_train:
-    create: True
+    create: False
     label: antiracist
     min_word_limit: 1
     datasets:

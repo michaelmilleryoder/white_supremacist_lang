@@ -15,6 +15,7 @@ import numpy as np
 import nltk
 from nltk.tokenize import TweetTokenizer
 from tqdm import tqdm
+import spacy
 
 import utils
 from utils import (remove_mentions, remove_urls, tokenize_lowercase, process_4chan,
@@ -107,8 +108,6 @@ class Dataset:
         #with Pool(self.n_jobs) as p:
         #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=80))
         self.data = self.data[self.data['word_count'] >= self.min_word_limit]
-        if self.name == 'calderon2021':
-            pdb.set_trace()
         self.data.drop_duplicates(subset='text', keep='first', inplace=True)
         if timestamp_col is not None:
             self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
@@ -252,10 +251,10 @@ class IronmarchDataset(Dataset):
 class StormfrontDataset(Dataset):
 
     @classmethod
-    def preprocess(cls, inp):
+    def preprocess(cls, inp, nlp):
         text = re.sub(r'Quote:\n\n\n\n\nOriginally Posted by .*\n\n\n', '', inp) # Remove quote tag
         text = re.sub(r'\S+(?:\.com|\.org|\.edu)\S*|https?:\/\/\S*', '', text) # Remove URLs
-        return tokenize_lowercase(text)
+        return tokenize_lowercase(text, nlp)
 
     def load(self):
         """ Load data dump """
@@ -288,9 +287,13 @@ class StormfrontDataset(Dataset):
 
     def process(self):
         """ Process data into a format to combine with other datasets """
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'ner'])
+        zipped = zip(self.data.text, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
-            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(self.preprocess, self.data['text']), 
-                total=len(self.data), ncols=80)))
+            #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(self.preprocess, self.data['text']), 
+            #    total=len(self.data), ncols=80)))
+            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(self.preprocess, tqdm(zipped, 
+                total=len(self.data), ncols=80))))
         self.data.reset_index(drop=True, inplace=True)
         self.uniform_format(timestamp_col='timestamp', errors='coerce')
 
@@ -326,10 +329,13 @@ class Jokubausaite2020Dataset(Dataset):
 
     def process(self):
         """ Process data into a format to combine with other datasets """
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'ner'])
+        zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
-            self.data['processed'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
-                total=len(self.data), ncols=80)))
-        self.data.rename(columns={'processed': 'text'}, inplace=True)
+            #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
+            #    total=len(self.data), ncols=80)))
+            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_4chan, tqdm(zipped, 
+                    total=len(self.data), ncols=80))))
         self.uniform_format(timestamp_col='timestamp')
 
 
@@ -362,9 +368,13 @@ class Papasavva2020Dataset(Dataset):
             dfs.append(pd.read_csv(fpath, low_memory=False))
         jokubausaite2020_ids = pd.concat(dfs).reset_index(drop=True)['id']
         self.data = self.data[~self.data.id.isin(jokubausaite2020_ids)]
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'ner'])
+        zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
-            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
-                    total=len(self.data), ncols=80)))
+            #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
+            #        total=len(self.data), ncols=80)))
+            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_4chan, tqdm(zipped, 
+                    total=len(self.data), ncols=80))))
         self.uniform_format(timestamp_col='time', unit='s')
 
 

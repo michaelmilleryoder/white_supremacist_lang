@@ -185,7 +185,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_143409_test
+  name: 3way_topicfiltered_53589_ws-5_test
   train: False
   test: True
   train_corpora:
@@ -201,4 +201,4 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     n_epochs: 10
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/3way/checkpoint-143409'
+    load: '../output/bert/3way_topicfiltered/checkpoint-53589'
