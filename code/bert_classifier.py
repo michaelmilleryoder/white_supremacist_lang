@@ -130,7 +130,7 @@ class BertClassifier:
         self.test_tokenized = None
 
     def compute_metrics(self, eval_pred):
-        # TODO: Add in evaluation on external corpora
+        # TODO: Add in evaluation on external corpora, or put it in another callback sort of thing
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
         #predictions = self.return_preds(logits)
@@ -161,9 +161,9 @@ class BertClassifier:
         white_supremacist_idx = self.label2id['white_supremacist']
 
         # Modify logits to prioritize higher precision
-        ws_shift = -5
+        #ws_shift = -10
         modified = logits.copy()
-        modified[:,white_supremacist_idx] = modified[:,white_supremacist_idx] + ws_shift
+        #modified[:,white_supremacist_idx] = modified[:,white_supremacist_idx] + ws_shift
         
         return np.argmax(modified, axis=-1)
         

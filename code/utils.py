@@ -77,10 +77,10 @@ def tokenize_lowercase(inp, nlp=None):
     return (' '.join(tokens).lower(), n_tokens)
 
 
-def process_reddit(inp):
+def process_reddit(inp, nlp=None):
     """ Remove HTML entities, tokenize and lowercase text from Reddit comments
         gathered through PushShift """
-    return tokenize_lowercase(remove_urls(html.unescape(str(inp))))
+    return tokenize_lowercase(remove_urls(html.unescape(str(inp))), nlp)
 
 
 class MLStripper(HTMLParser):
@@ -120,9 +120,9 @@ def process_4chan(text, nlp):
     return tokenize_lowercase(text, nlp)
 
 
-def process_article(inp):
+def process_article(inp, nlp):
     text = str(inp).replace('.', '. ')
-    return tokenize_lowercase(text)
+    return tokenize_lowercase(text, nlp)
 
 
 def process_chat(text, tokenizer, remove_list=None):

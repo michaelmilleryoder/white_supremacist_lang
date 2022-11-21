@@ -216,7 +216,7 @@ class PatriotfrontDataset(Dataset):
             messages = messages.join(channels, on='channel_id', rsuffix='_channel')
             messages = messages.query('name == "general"')
             message_dfs.append(messages) 
-        self.data = pd.concat(message_dfs)
+        self.data = pd.concat(message_dfs).reset_index()
 
     def process(self):
         """ Process data into a format to combine with other datasets """
@@ -287,7 +287,7 @@ class StormfrontDataset(Dataset):
 
     def process(self):
         """ Process data into a format to combine with other datasets """
-        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'ner'])
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         zipped = zip(self.data.text, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(self.preprocess, self.data['text']), 
@@ -329,7 +329,7 @@ class Jokubausaite2020Dataset(Dataset):
 
     def process(self):
         """ Process data into a format to combine with other datasets """
-        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'ner'])
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
@@ -384,12 +384,17 @@ class Calderon2021Dataset(Dataset):
         """ Load data dump """
         with open(self.load_paths[0]) as f:
             self.data = pd.json_normalize(json.load(f))
+        self.data.index = self.source + '_' + self.data.index.astype(str)
 
     def process(self):
         """ Process data into a format to combine with other datasets """
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
+        zipped = zip(self.data['title'] + ' ' + self.data['author_wording'], itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
-            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
-                    process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data), ncols=80)))
+            #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+            #        process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data), ncols=80)))
+            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_article, 
+                tqdm(zipped, total=len(self.data), ncols=80))))
         # remove date errors. Could extract real date by parsing text
         self.data.loc[~self.data.date.str.startswith('20'), 'date'] = '' 
         self.data = self.data.drop(columns=['author_wording', 'title'])
@@ -414,6 +419,7 @@ class Pruden2022Dataset(Dataset):
             else:
                 text = [line.strip() for line in f.read().splitlines() if len(line.strip()) > 0]
         self.data = pd.DataFrame({'orig_text': text, 'year': self.source_years[self.source]})
+        self.data.index = self.source + '_' + self.data.index.astype(str)
 
     def process(self): 
         """ Process data into a format to combine with other datasets """
@@ -444,13 +450,18 @@ class Reddit_matchDataset(RawReddit):
         """ Sample data to match forum data in white supremacist data by year (random across subreddits).
             Process data for combining with other datasets in neutral corpus.
         """
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         self.data['timestamp'] = pd.to_datetime(self.data['created_utc'], unit='s', utc=True)
-        self.data = self.data.groupby(self.data.timestamp.dt.year).apply(
-            lambda group: group.sample(
-            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
+        self.data.reset_index(drop=True, inplace=True)
+        #self.data = self.data.groupby(self.data.timestamp.dt.year).apply(
+        #    lambda group: group.sample(
+        #    self.lookup['white_supremacist_train'][('post_count', 'count')][group.name]*2)).reset_index(drop=True)
+        zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
-            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
-                    process_reddit, self.data['body']), total=len(self.data), ncols=80)))
+            #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+            #        process_reddit, self.data['body']), total=len(self.data), ncols=80)))
+            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_reddit, 
+                tqdm(zipped, total=len(self.data), ncols=80))))
         self.uniform_format()
 
     #def print_stats(self):
@@ -478,9 +489,13 @@ class Reddit_antiracistDataset(RawReddit):
         """ Sample data to match forum data in white supremacist data by year (random across subreddits).
             Process data for combining with other datasets in neutral corpus.
         """
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
+        zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
-            self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
-                    process_reddit, self.data['body']), total=len(self.data), ncols=80)))
+            #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
+            #        process_reddit, self.data['body']), total=len(self.data), ncols=80)))
+            self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_reddit, 
+                tqdm(zipped, total=len(self.data), ncols=80))))
         self.uniform_format(timestamp_col='created_utc')
 
         # Fill in with neutral data
@@ -526,8 +541,8 @@ class Discord_matchDataset(Dataset):
         ws_word_count = self.ref_corpora['white_supremacist_train'].word_count.sum()
         sampled_words = 0
         sampled = []
-        pbar = tqdm(total=ws_word_count, ncols=80)
-        while sampled_words < ws_word_count:
+        pbar = tqdm(total=ws_word_count*10, ncols=80)
+        while sampled_words < ws_word_count*10:
             #selected_chunk = chunks.pop()
             # Sample, tokenize and process
             sample = self.data.sample(10000)
@@ -539,7 +554,7 @@ class Discord_matchDataset(Dataset):
             sample_words = filtered.word_count.sum()
             sampled_words += sample_words
             sampled.append(filtered)
-            pbar.update(sample_words)
+            pbar.update(sample_words) # TODO: progress bar doesn't actually update for some reason (is way over total)
         self.data = pd.concat(sampled).drop_duplicates()
 
         # TODO: speed up by simply sampling a likely amount of data, processing it and then sampling up to a good word count
@@ -572,10 +587,10 @@ class News_matchDataset(Dataset):
         # Sample specific number of articles by year
         # don't bother about word count since it will be similar once it's truncated with BERT to 512 tokens
         match = self.data[self.data.year.isin(self.lookup['white_supremacist_train'].index)]
-        self.data = match.groupby(match.year).apply(lambda group: group.sample(
-                #int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]/3.5
-                self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')] 
-            )).reset_index(drop = True)
+        self.data = match
+        #self.data = match.groupby(match.year).apply(lambda group: group.sample(
+        #        self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]*2 
+        #    )).reset_index(drop = True)
 
         # Process data
         with Pool(self.n_jobs) as p:
@@ -596,6 +611,16 @@ class Twitter_matchDataset(RawTwitter):
                 dfs.append(pd.json_normalize([json.loads(line) for line in f.read().splitlines()]))
         self.data = pd.concat(dfs).reset_index(drop=True)
 
+    def process(self):
+        """ Sample to match current white supremacist corpus distribution of tweets (was initially scraped to
+            match an older white supremacist corpus """
+        self.data.reset_index(drop=True, inplace=True)
+        #self.data['created_at'] = pd.to_datetime(self.data['created_at'])
+        #self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
+        #    self.lookup['white_supremacist_train'][('post_count', 'count')][group.name]*2
+        #    )).reset_index(drop=True)
+        super().process()
+
 
 class Twitter_antiracistDataset(Twitter_matchDataset):
     """ Load and process tweets from antiracist accounts to match Twitter data in white supremacy dataset """
@@ -606,9 +631,8 @@ class Twitter_antiracistDataset(Twitter_matchDataset):
         """
         self.data['created_at'] = pd.to_datetime(self.data['created_at'])
         self.data = self.data[self.data.created_at.dt.year.isin(self.lookup['white_supremacist_train'].index)]
-        self.data = self.data.groupby(self.data.created_at.dt.year).apply(
-                lambda group: group.sample(
-                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
+        #self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
+        #        self.lookup['white_supremacist_train'][('post_count', 'count')][group.name]*2)).reset_index(drop=True)
         super().process()
 
 
@@ -707,6 +731,14 @@ class Adl_heatmapDataset(Dataset):
 class Rieger2021Dataset(Dataset):
     """ Annotated data from Rieger+ 2021 paper """
 
+    @classmethod
+    def preprocess(cls, text, nlp):
+        """ Preprocess Rieger+ 2021 4chan, 8chan, t_D data """
+        # Remove special characters
+        text = utils.remove_special(str(text))
+        # Tokenize
+        return utils.tokenize_lowercase(text, nlp)
+
     def load(self):
         # Load annotations
         annotations = pd.read_csv(self.load_paths[0], na_values=-99)
@@ -786,9 +818,12 @@ class Rieger2021Dataset(Dataset):
         self.data = data.query('white_supremacist or (gen_ins==0 and viol==0 and pers_ins==0 and not white_supremacist)')
 
     def process(self):
+        nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         # Remove NaNs of Text
         self.data = self.data.dropna(subset='Text')
-        self.data['text'], self.data['word_count'] = list(zip(*self.data['Text'].map(process_rieger2021)))
+        zipped = zip(self.data.Text, itertools.repeat(nlp))
+        #self.data['text'], self.data['word_count'] = list(zip(*self.data['Text'].map(process_rieger2021)))
+        self.data['text'], self.data['word_count'] = list(zip(*[self.preprocess(text, nlp) for text, nlp in zipped]))
         self.data = self.data[self.data['text'] != '']
         self.data['label'] = self.data['white_supremacist'].astype(int)
         self.uniform_format()
@@ -824,8 +859,8 @@ class Medium_antiracistDataset(Dataset):
 
     def process(self):
         """ Sample data to match the number of long-form articles in the white supremacist corpus """
-        ws_long = self.ref_corpora['white_supremacist_train'].query('domain=="long-form"')
-        self.data = self.data.sample(len(ws_long))
+        ws_long = self.ref_corpora['white_supremacist_train']
+        self.data = self.data.sample(len(ws_long)*2)
 
         # Process
         self.data['text'], self.data['word_count'] = list(zip(*tqdm(self.data['text'].map(tokenize_lowercase), ncols=80)))

@@ -141,11 +141,10 @@ class Corpus:
         """ Print, save out stats on the dataset in a log or output dir 
             (#posts, #words per domain type, overall)
         """
-        self.data['num_words'] = self.data.text.str.split().str.len()
-        stats = self.data.groupby('domain').agg({'num_words': ['count', 'sum', 'mean']}).reset_index()
+        stats = self.data.groupby('domain').agg({'word_count': ['count', 'sum', 'mean']}).reset_index()
         stats.columns = ['domain', 'post_count', 'word_count', 'avg_post_words']
-        total = pd.DataFrame({'domain': 'all', 'post_count': len(self.data), 'word_count': self.data.num_words.sum(),
-            'avg_post_words': self.data.num_words.mean()}, index=['total'])
+        total = pd.DataFrame({'domain': 'all', 'post_count': len(self.data), 'word_count': self.data.word_count.sum(),
+            'avg_post_words': self.data.word_count.mean()}, index=['total'])
         stats = pd.concat([stats,total])
         stats['post%'] = stats['post_count']/stats.loc['total', 'post_count']
         stats['word%'] = stats['word_count']/stats.loc['total', 'word_count']

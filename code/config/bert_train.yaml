@@ -6,12 +6,16 @@ corpora:
     create: False
     label: white_supremacist
     min_word_limit: 10
-    lda_filter: # remove posts that match certain topics in a trained LDA model
-      query: 'domain=="forum"'
-      model: '../models/ws_forum_lda30.pkl'
-      vectorizer: '../models/ws_forum_countvectorizer.pkl'
-      exclude_topics: [0,3,24,7,11,1,8,29,23,15,16,20,5,17]
-    sample: ['domain=="forum"', 100000] # [query to select data, n to sample from that queried data]
+    lda_filter: # remove posts that match certain topics in a trained LDA model. Put Null if not using
+      #query: 'domain=="forum"'
+      query: Null
+      model: '../models/white_supremacist_fulltext_lda30.pkl'
+      vectorizer: '../models/white_supremacist_fulltext_countvectorizer.pkl'
+      include_topics: [13,28]
+      exclude_topics: Null
+    sample: # Put Null if not using
+      query: 'domain=="forum"' # query to select data
+      sample_n: 100000 # n to sample from that queried data 
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -60,11 +64,11 @@ corpora:
         domain: long-form
         load_paths:
           - ../data/calderon2021/d_stormer_documents.json
-      - name: calderon2021
-        source: american_renaissance
-        domain: long-form
-        load_paths:
-          - ../data/calderon2021/amran_documents.json
+      #- name: calderon2021
+      #  source: american_renaissance
+      #  domain: long-form
+      #  load_paths:
+      #    - ../data/calderon2021/amran_documents.json
       - name: pruden2022
         source: breivik_manifesto
         domain: long-form
@@ -194,7 +198,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_topicfiltered
+  name: 3way_2topic
   train: True
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
