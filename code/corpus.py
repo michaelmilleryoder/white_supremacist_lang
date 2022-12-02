@@ -25,7 +25,7 @@ class Corpus:
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
                     min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: dict = None,
-                    test_split: float = None):
+                    test_split: float = None, selected_fold: str = 'all'):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -45,6 +45,7 @@ class Corpus:
                         sample_n: n to sample from that queried data, or a fraction
                 test_split: size (fraction) of the corpus to randomly sample as a test split.
                         Training and test splits (as well as the original) will be saved out.
+                selected_fold: split to be used as primary data for this corpus. Default is 'all'
         """
         self.name = name
         self.base_dirpath = '../data/corpora'
@@ -72,6 +73,8 @@ class Corpus:
         if self.test_split is not None:
             self.train_suffix = f'_train{int((1-self.test_split)*100)}'
             self.test_suffix = f'_test{int(self.test_split*100)}'
+        self.selected_fold = selected_fold
+        self.folds = {}
         self.data = None
 
     def load(self):
@@ -85,9 +88,10 @@ class Corpus:
                 if self.ref_corpora is not None:
                     dataset.print_stats()
                 dfs.append(dataset.data)
-            self.data = pd.concat(dfs).drop_duplicates(subset='text')
+            self.folds['all'] = pd.concat(dfs).drop_duplicates(subset='text')
             if self.test_split is not None:
-                self.train, self.test = train_test_split(self.data, test_size=self.test_split, random_state=9)
+                self.folds['train'], self.folds['test'] = train_test_split(
+                    self.data, test_size=self.test_split, random_state=9)
             if self.lda_filter is not None:
                 self.filter_lda()
             if self.sample_info is not None:
@@ -101,10 +105,12 @@ class Corpus:
             else:
                 load_path = self.fpath
             print(f"Loading corpus from {load_path}...")
-            self.data = self.load_corpus(load_path)
+            self.folds['all'] = self.load_corpus(load_path)
             if self.test_split is not None:
-                self.train, self.test = (self.load_corpus(load_path + self.train_suffix), 
+                self.folds['train'], self.folds['test'] = (self.load_corpus(load_path + self.train_suffix), 
                         self.load_corpus(load_path + self.test_suffix))
+        self.data = self.folds[self.selected_split]
+
         # Assign labels
         if isinstance(self.label, str):
             self.data['label_str'] = self.label

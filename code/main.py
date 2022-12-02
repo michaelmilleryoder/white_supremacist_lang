@@ -33,9 +33,11 @@ def main():
                         config['experiment']['name'],
                         config['experiment']['train'],
                         config['experiment']['test'],
-                        # TODO: load the correct split for corpora (all, train, test)
-                        [corpora[corpus_name] for corpus_name in config['experiment']['train_corpora']], 
-                        [corpora[corpus_name] for corpus_name in config['experiment']['test_corpora']], 
+                        corpora,
+                        config['experiment']['train_corpora'],
+                        config['experiment']['test_corpora'],
+                        #[corpora[corpus_info['name'] for corpus_info in config['experiment']['train_corpora'].items()], 
+                        #[corpora[corpus_name] for corpus_d in config['experiment']['test_corpora']], 
                         config['experiment']['classifier'],
                         test_label_combine=config['experiment'].get('test_label_combine', None)
                         )

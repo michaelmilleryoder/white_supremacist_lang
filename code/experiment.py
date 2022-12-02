@@ -10,14 +10,16 @@ from corpus import Corpus
 
 class Experiment:
 
-    def __init__(self, name: str, train: bool, test: bool, train_corpora: list[Corpus], test_corpora: list[Corpus], 
+    def __init__(self, name: str, train: bool, test: bool, corpora: list[Corpus], train_corpora: dict, test_corpora: dict, 
         classifier: dict, test_label_combine: dict = None):
         """ Args:
                 name: name of the model for saving out results
                 train: whether to train a model
                 test: whether to evaluate a model
-                train_corpora: training corpora to be combined and given labels based on `label_str' column
-                test_corpora: evaluation corpora, unseen by the model. Each should already have a column of 'label'
+                corpora: list of Corpus objects to be used in the experiments
+                train_corpora: dictionary of info about which corpora and folds are to be used for training.
+                    These are given labels based on `label_str' column
+                test_corpora: dictionary of info about which corpora and folds are to be used for evaluation.
                 classifier: dict of info on the classifier. Should include a key of 'type' with a string in {bert}
                 test_label_combine: a dictionary of any changes of predicted labels to make 
                     (to combine 3-way to 2-way classification, eg)
@@ -25,6 +27,9 @@ class Experiment:
         self.name = name
         self.do_train = train
         self.do_test = test
+        self.corpora = corpora
+        self.train_corpora = train_corpora
+        # TODO: select folds from self.corpora
         self.test_corpora = test_corpora
         self.train_data = pd.concat([train_corpus.data for train_corpus in train_corpora])
         self.clf = None
