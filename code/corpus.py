@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
 
 from data import Dataset
 
@@ -23,7 +24,8 @@ class Corpus:
     """
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
-                    min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: dict = None):
+                    min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: dict = None,
+                    test_split: float = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -40,7 +42,9 @@ class Corpus:
                         'query' of posts to consider removing, 'exclude_topics' with a list of topics to exclude
                 sample: dict of info on sample a portion of the full corpus, or None if not sampling
                         query: to select data, 
-                        sample_n: n to sample from that queried data
+                        sample_n: n to sample from that queried data, or a fraction
+                test_split: size (fraction) of the corpus to randomly sample as a test split.
+                        Training and test splits (as well as the original) will be saved out.
         """
         self.name = name
         self.base_dirpath = '../data/corpora'
@@ -64,6 +68,10 @@ class Corpus:
                 ref_corpora=ref_corpora, min_word_limit=min_word_limit) for ds in datasets]
         self.lda_filter = lda_filter
         self.sample_info = sample
+        self.test_split = test_split
+        if self.test_split is not None:
+            self.train_suffix = f'_train{int((1-self.test_split)*100)}'
+            self.test_suffix = f'_test{int(self.test_split*100)}'
         self.data = None
 
     def load(self):
@@ -78,6 +86,8 @@ class Corpus:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.data = pd.concat(dfs).drop_duplicates(subset='text')
+            if self.test_split is not None:
+                self.train, self.test = train_test_split(self.data, test_size=self.test_split, random_state=9)
             if self.lda_filter is not None:
                 self.filter_lda()
             if self.sample_info is not None:
@@ -92,6 +102,9 @@ class Corpus:
                 load_path = self.fpath
             print(f"Loading corpus from {load_path}...")
             self.data = self.load_corpus(load_path)
+            if self.test_split is not None:
+                self.train, self.test = (self.load_corpus(load_path + self.train_suffix), 
+                        self.load_corpus(load_path + self.test_suffix))
         # Assign labels
         if isinstance(self.label, str):
             self.data['label_str'] = self.label
@@ -159,6 +172,11 @@ class Corpus:
         self.data.to_json(self.fpath, orient='table', indent=4)
         print(f"Saving corpus to {self.tmp_fpath}...") # for faster loading as an option
         self.data.to_pickle(self.tmp_fpath)
+        if self.test_split is not None:
+            self.train.to_json(self.fpath + self.train_suffix, orient='table', indent=4)
+            self.train.to_pickle(self.tmp_fpath + self.train_suffix)
+            self.test.to_json(self.fpath + self.test_suffix, orient='table', indent=4)
+            self.test.to_pickle(self.tmp_fpath + self.test_suffix)
 
     @classmethod
     def load_corpus(cls, path):

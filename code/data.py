@@ -678,7 +678,8 @@ class Siegel2021Dataset(Dataset):
     def process(self):
         """ Process data for evaluating classifiers based on other datasets. """
         tokenizer = TweetTokenizer(strip_handles=True)
-        self.data['text'] = [process_tweet_text(text, tokenizer) for text in self.data['text']]
+        self.data['text'], self.data['word_count'] = list(zip(*[utils.process_tweet_text(text, 
+                tokenizer) for text in self.data['text']]))
         self.data['label'] = self.data['white_nationalism'].map(lambda x: 1 if x=='yes' else 0)
         self.uniform_format()
 

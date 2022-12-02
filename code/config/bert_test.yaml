@@ -185,7 +185,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_2topic_31836_test
+  name: annotated_train_470_test
   train: False
   test: True
   train_corpora:
@@ -199,6 +199,6 @@ experiment: # define experiments where train particular classifiers on particula
   test_label_combine: {antiracist: neutral}
   classifier: 
     type: bert
-    n_epochs: 10
+    n_epochs: 8
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/3way_2topic/checkpoint-31836'
+    load: '../output/bert/annotated_train/checkpoint-470'

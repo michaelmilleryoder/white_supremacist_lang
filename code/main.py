@@ -26,12 +26,6 @@ def main():
     # Consruct or load corpora
     print('Constructing or loading corpora...')
     corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items()}
-    #corpora = {key: Corpus(key, **opts).load() for key, opts in config['corpora'].items() if opts['create']} # for debugging
-    #corpora = [Corpus(**opts).load() for opts in config['corpora']]
-    #corpora = [Corpus(**opts).load() for opts in config['corpora'] if opts['create']] # for debugging
-    #corpora = {}
-    #for role, info in config['corpora'].items():
-    #    corpora[role] = Corpus(**info).load()
 
     # Train and evaluate classifier
     if config['experiment']['train'] or config['experiment']['test']:
@@ -39,6 +33,7 @@ def main():
                         config['experiment']['name'],
                         config['experiment']['train'],
                         config['experiment']['test'],
+                        # TODO: load the correct split for corpora (all, train, test)
                         [corpora[corpus_name] for corpus_name in config['experiment']['train_corpora']], 
                         [corpora[corpus_name] for corpus_name in config['experiment']['test_corpora']], 
                         config['experiment']['classifier'],

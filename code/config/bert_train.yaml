@@ -198,7 +198,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_2topic
+  name: 3way_2topic_fullneutral_fullantiracist
   train: True
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
@@ -211,6 +211,6 @@ experiment: # define experiments where train particular classifiers on particula
     - bias_test
   classifier: 
     type: bert
-    n_epochs: 10
+    n_epochs: 8
     load: Null # Null to train a new model from scratch, or a path to the model to load
     #load: '../output/bert/checkpoint-778326' # Null to train a new model from scratch, or a path to the model to load

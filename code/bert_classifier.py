@@ -17,7 +17,7 @@ from corpus import Corpus
 
 
 class MultiClassTrainer(Trainer):
-    """ Custom class to handle multiclass classification training """
+    """ Custom class to handle multiclass classification training (NOT USED) """
     
     def compute_loss(self, model, inputs, return_outputs=False):
         #labels = inputs.get('labels')
@@ -35,7 +35,8 @@ class MultiClassTrainer(Trainer):
 class BertClassifier:
 
     def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_labels: int = 2, 
-        id2label: dict = None, label2id: dict = None, n_epochs: int = 5, test_label_combine: dict = None):
+        id2label: dict = None, label2id: dict = None, n_epochs: int = 5, checkpoints: str = None, 
+        test_label_combine: dict = None):
         """ Args:
                 exp_name: name of the experiment (for the output filename)
                 train: whether the model will be trained
@@ -46,6 +47,7 @@ class BertClassifier:
                 id2label: mapping of class IDs to class names
                 label2id: mapping of class names to class IDs
                 n_epochs: number of epochs to train
+                checkpoints: whether to save at 'epoch' or 'steps', which will save a fixed number of times over training
                 test_label_combine: a dictionary of any changes of predicted labels to make 
                     (to combine 3-way to 2-way classification, eg)
         """
@@ -60,6 +62,7 @@ class BertClassifier:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
             self.tokenizer = AutoTokenizer.from_pretrained(load)
         self.n_epochs = n_epochs
+        self.checkpoints = checkpoints if checkpoints in ['steps', 'epoch'] else 'no'
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.metrics = {'accuracy': load_metric('accuracy'), 
                 'precision': load_metric('precision'),
@@ -78,11 +81,11 @@ class BertClassifier:
         #           'f1': load_metric('f1', average=None)}
         self.batch_size = 16
         if train_length is None:
-            self.checkpoint = self.batch_size * int(2e3)
+            self.checkpoint_steps = self.batch_size * int(2e3)
         else:
-            #total_steps = (int(train_length/self.batch_size) + 1) * self.n_epochs
-            #self.checkpoint = int(total_steps/30)
-            self.checkpoint = 100 # for debugging
+            total_steps = (int(train_length/self.batch_size) + 1) * self.n_epochs
+            self.checkpoint_steps = int(total_steps/30)
+            pdb.set_trace() # check that train_length, steps is working as expected (doesn't match progress bar for some reason)
         self.output_dir = f"../output/bert/{self.exp_name}"
         if train:
             report_to = 'wandb'
@@ -99,13 +102,12 @@ class BertClassifier:
             per_device_eval_batch_size = self.batch_size,
             num_train_epochs=self.n_epochs,
             weight_decay=0.01,
-            #evaluation_strategy='steps',
-            evaluation_strategy='epoch',
-            save_strategy='epoch',
-            logging_strategy='epoch',
-            #logging_steps = self.checkpoint,
-            #eval_steps = self.checkpoint,
-            #save_steps = self.checkpoint,
+            evaluation_strategy=self.checkpoints,
+            save_strategy=self.checkpoints,
+            logging_strategy=self.checkpoints,
+            logging_steps = self.checkpoint_steps,
+            eval_steps = self.checkpoint_steps,
+            save_steps = self.checkpoint_steps,
             report_to = report_to,
             run_name=run_name,
         )

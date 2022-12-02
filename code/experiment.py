@@ -45,6 +45,7 @@ class Experiment:
                 id2label = id2label,
                 label2id = self.label2id,
                 n_epochs=classifier['n_epochs'],
+                checkpoints = classifier.get('checkpoints', None),
                 test_label_combine=self.test_label_combine,
                 )
         

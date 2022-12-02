@@ -1,0 +1,96 @@
+---
+# Define which datasets are in which corpora
+corpora:
+
+  #annotated_alatawi2021: # just alatawi2021 for training
+  #  create: False
+  #  label: {1: white_supremacist, 0: neutral}
+  #  datasets:
+  #    - name: alatawi2021
+  #      source: twitter
+  #      domain: tweet
+  #      load_paths:
+  #        - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+
+  #annotated_rieger2021: # just alatawi2021 for training
+  #  create: False
+  #  label: {1: white_supremacist, 0: neutral}
+  #  datasets:
+  #    - name: rieger2021
+  #      source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+  #      domain: forum
+  #      load_paths:
+  #        - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+  #        - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  annotated: # test sets human-annotated for white supremacy
+    create: True
+    label: {1: white_supremacist, 0: neutral}
+    test_split: 0.3 # fraction of samples to include in a test split
+    datasets:
+      - name: alatawi2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+      #- name: siegel2021 
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths:
+      #    - '../data/siegel2021/white_nationalist_training_data.csv'
+      #    - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: siegel2021_white_nationalist_only
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  domain_test: # out-of-domain evaluations
+    create: False
+    label: white_supremacist
+    datasets:
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_quotes.csv'
+          - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
+
+  bias_test:
+    create: False
+    label: neutral # possibly antiracist for positive uses of identities?
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
+
+experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
+  name: annotated_train
+  train: True
+  test: True
+  train_corpora:
+    - name: annotated
+      split: train
+      test_size: .3
+  test_corpora: 
+    - name: annotated
+      split: test
+      test_size: .3
+    - name: domain_test
+    - name: bias_test
+  classifier: 
+    type: bert
+    n_epochs: 10
+    load: Null # Null to train a new model from scratch, or a path to the model to load
+    #load: '../output/bert/checkpoint-778326' # Null to train a new model from scratch, or a path to the model to load
+    checkpoints: epoch # whether to save at 'epoch' or 'steps', which will save 30 times over the entire training set
