@@ -3,8 +3,9 @@
 corpora:
 
   #annotated_alatawi2021: # just alatawi2021 for training
-  #  create: False
+  #  create: True
   #  label: {1: white_supremacist, 0: neutral}
+  #  test_size: 0.3
   #  datasets:
   #    - name: alatawi2021
   #      source: twitter
@@ -12,21 +13,22 @@ corpora:
   #      load_paths:
   #        - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
 
-  #annotated_rieger2021: # just alatawi2021 for training
-  #  create: False
-  #  label: {1: white_supremacist, 0: neutral}
-  #  datasets:
-  #    - name: rieger2021
-  #      source: 4chan # actually is reddit, 4chan and 8chan (could separate)
-  #      domain: forum
-  #      load_paths:
-  #        - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
-  #        - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
-
-  annotated: # test sets human-annotated for white supremacy
+  annotated_rieger2021: # just rieger2021 for training
     create: True
     label: {1: white_supremacist, 0: neutral}
-    test_split: 0.3 # fraction of samples to include in a test split
+    test_size: 0.3
+    datasets:
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  annotated: # test sets human-annotated for white supremacy
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+    test_size: 0.3 # fraction of samples to include in a test split
     datasets:
       - name: alatawi2021
         source: twitter
@@ -75,17 +77,15 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: annotated_train
+  name: annotated_rieger2021_train
   train: True
   test: True
   train_corpora:
-    - name: annotated
-      split: train
-      test_size: .3
+    - name: annotated_rieger2021
+      fold: train
   test_corpora: 
     - name: annotated
-      split: test
-      test_size: .3
+      fold: test
     - name: domain_test
     - name: bias_test
   classifier: 

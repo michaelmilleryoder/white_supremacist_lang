@@ -85,7 +85,8 @@ class BertClassifier:
         else:
             total_steps = (int(train_length/self.batch_size) + 1) * self.n_epochs
             self.checkpoint_steps = int(total_steps/30)
-            pdb.set_trace() # check that train_length, steps is working as expected (doesn't match progress bar for some reason)
+            #pdb.set_trace() # check that train_length, steps is working as expected (doesn't match progress bar for some reason)
+            #    # Probably is batch size "per device" * devices or something? Can't check DataLoader
         self.output_dir = f"../output/bert/{self.exp_name}"
         if train:
             report_to = 'wandb'
@@ -146,12 +147,18 @@ class BertClassifier:
                 results[metric_name] = {}
                 for k, result in metric.compute(predictions=predictions, references=labels, average=None).items():
                     results[metric_name][k] = {}
-                    for i, val in enumerate(result):
-                        label_idx = unique_labels[i]
-                        if not label_idx in self.id2label:
-                            pdb.set_trace()
+                    if isinstance(result, float):
+                        # Get label ID from predictions
+                        label_idx = list(set(predictions))[0]
                         label = self.id2label[label_idx]
-                        results[metric_name][k][label] = val
+                        results[metric_name][k][label] = result
+                    else:
+                        for i, val in enumerate(result): # result is an array for each class, or just a number if there's one class
+                            label_idx = unique_labels[i]
+                            if not label_idx in self.id2label:
+                                pdb.set_trace()
+                            label = self.id2label[label_idx]
+                            results[metric_name][k][label] = val
                 #results[metric_name] = {k: {self.id2label[unique_labels[i]]: val for i, val in enumerate(result)} for (k, 
                 #    result) in metric.compute(predictions=predictions, references=labels, average=None).items()}
             else:
@@ -219,7 +226,7 @@ class BertClassifier:
         """
         result_lines = []
         for corpus in test:
-            print(f"Evaluating on test corpus {corpus.name}...")
+            print(f"\nEvaluating on test corpus {corpus.name}...")
             for dataset in corpus.data.dataset.unique():
                 selected = corpus.data.query('dataset==@dataset')
                 test_data, test_tokenized = self.prepare_dataset(selected, split=False)

@@ -8,6 +8,7 @@
 import os
 import pickle
 import pdb
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -25,7 +26,7 @@ class Corpus:
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
                     min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: dict = None,
-                    test_split: float = None, selected_fold: str = 'all'):
+                    test_size: float = None, selected_fold: str = 'all'):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -43,7 +44,7 @@ class Corpus:
                 sample: dict of info on sample a portion of the full corpus, or None if not sampling
                         query: to select data, 
                         sample_n: n to sample from that queried data, or a fraction
-                test_split: size (fraction) of the corpus to randomly sample as a test split.
+                test_size: size (fraction) of the corpus to randomly sample as a test split.
                         Training and test splits (as well as the original) will be saved out.
                 selected_fold: split to be used as primary data for this corpus. Default is 'all'
         """
@@ -69,10 +70,10 @@ class Corpus:
                 ref_corpora=ref_corpora, min_word_limit=min_word_limit) for ds in datasets]
         self.lda_filter = lda_filter
         self.sample_info = sample
-        self.test_split = test_split
-        if self.test_split is not None:
-            self.train_suffix = f'_train{int((1-self.test_split)*100)}'
-            self.test_suffix = f'_test{int(self.test_split*100)}'
+        self.test_size = test_size
+        if self.test_size is not None:
+            self.train_suffix = f'_train{int((1-self.test_size)*100)}'
+            self.test_suffix = f'_test{int(self.test_size*100)}'
         self.selected_fold = selected_fold
         self.folds = {}
         self.data = None
@@ -89,13 +90,14 @@ class Corpus:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.folds['all'] = pd.concat(dfs).drop_duplicates(subset='text')
-            if self.test_split is not None:
+            if self.test_size is not None:
                 self.folds['train'], self.folds['test'] = train_test_split(
-                    self.data, test_size=self.test_split, random_state=9)
+                    self.folds['all'], test_size=self.test_size, random_state=9)
             if self.lda_filter is not None:
                 self.filter_lda()
             if self.sample_info is not None:
                 self.sample()
+            self.data = self.folds[self.selected_fold]
             self.print_save_stats()
             self.save()
         else:
@@ -106,17 +108,27 @@ class Corpus:
                 load_path = self.fpath
             print(f"Loading corpus from {load_path}...")
             self.folds['all'] = self.load_corpus(load_path)
-            if self.test_split is not None:
-                self.folds['train'], self.folds['test'] = (self.load_corpus(load_path + self.train_suffix), 
-                        self.load_corpus(load_path + self.test_suffix))
-        self.data = self.folds[self.selected_split]
+            if self.test_size is not None:
+                path = Path(load_path)
+                train_path = str(path.with_stem(str(path.stem) + self.train_suffix))
+                test_path = str(path.with_stem(str(path.stem) + self.test_suffix))
+                self.folds['train'], self.folds['test'] = self.load_corpus(train_path), self.load_corpus(test_path)
+            self.data = self.folds[self.selected_fold]
 
-        # Assign labels
+        self.assign_labels()
+
+        return self
+
+    def assign_labels(self):
+        """ Assign labels """
         if isinstance(self.label, str):
+            for fold in self.folds:
+                self.folds[fold]['label_str'] = self.label
             self.data['label_str'] = self.label
         else: # is a dict mapping dataset labels to other labels
+            for fold in self.folds:
+                self.folds[fold]['label_str'] = self.folds[fold].label.map(self.label)
             self.data['label_str'] = self.data.label.map(self.label)
-        return self
 
     def filter_lda(self):
         """ Remove posts, or only select posts, that match certain topics in a trained LDA model """
@@ -172,17 +184,35 @@ class Corpus:
         print(stats)
         stats.to_json(self.stats_fpath, orient='records', lines=True)
 
+    def set_labels(self, label2id):
+        """ Set label column based on the supplied label2id dict """
+        for fold in self.folds:
+            self.folds[fold]['label'] = self.folds[fold]['label_str'].map(label2id)
+        self.data['label'] = self.data['label_str'].map(label2id)
+        return self
+
+    def set_data(self, foldname):
+        """ Set the data attribute to the specified fold """
+        self.data = self.folds[foldname]
+        return self
+
     def save(self):
         """ Save out corpus data for easier loading """
         print(f"Saving corpus to {self.fpath}...")
         self.data.to_json(self.fpath, orient='table', indent=4)
         print(f"Saving corpus to {self.tmp_fpath}...") # for faster loading as an option
         self.data.to_pickle(self.tmp_fpath)
-        if self.test_split is not None:
-            self.train.to_json(self.fpath + self.train_suffix, orient='table', indent=4)
-            self.train.to_pickle(self.tmp_fpath + self.train_suffix)
-            self.test.to_json(self.fpath + self.test_suffix, orient='table', indent=4)
-            self.test.to_pickle(self.tmp_fpath + self.test_suffix)
+        if self.test_size is not None:
+            path = Path(self.fpath)
+            tmp_fpath = Path(self.tmp_path)
+            train_json_path = str(path.with_stem(str(path.stem) + self.train_suffix))
+            test_json_path = str(path.with_stem(str(path.stem) + self.test_suffix))
+            train_pkl_path = str(tmp_path.with_stem(str(tmp_path.stem) + self.train_suffix))
+            test_pkl_path = str(tmp_path.with_stem(str(tmp_path.stem) + self.test_suffix))
+            self.folds['train'].to_json(train_json_path, orient='table', indent=4)
+            self.folds['train'].to_pickle(train_pkl_path)
+            self.folds['test'].to_json(train_json_path, orient='table', indent=4)
+            self.folds['test'].to_pickle(test_pkl_path)
 
     @classmethod
     def load_corpus(cls, path):

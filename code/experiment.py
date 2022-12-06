@@ -10,14 +10,15 @@ from corpus import Corpus
 
 class Experiment:
 
-    def __init__(self, name: str, train: bool, test: bool, corpora: list[Corpus], train_corpora: dict, test_corpora: dict, 
+    def __init__(self, name: str, train: bool, test: bool, 
+        corpora: dict[str, Corpus], train_corpora: list[dict], test_corpora: list[dict], 
         classifier: dict, test_label_combine: dict = None):
         """ Args:
                 name: name of the model for saving out results
                 train: whether to train a model
                 test: whether to evaluate a model
-                corpora: list of Corpus objects to be used in the experiments
-                train_corpora: dictionary of info about which corpora and folds are to be used for training.
+                corpora: dictionary of name as keys, Corpus objects as values, to be used in the experiment
+                train_corpora: list of dictionary of info about which corpora and folds are to be used for training.
                     These are given labels based on `label_str' column
                 test_corpora: dictionary of info about which corpora and folds are to be used for evaluation.
                 classifier: dict of info on the classifier. Should include a key of 'type' with a string in {bert}
@@ -28,10 +29,13 @@ class Experiment:
         self.do_train = train
         self.do_test = test
         self.corpora = corpora
-        self.train_corpora = train_corpora
         # TODO: select folds from self.corpora
+                        #[corpora[corpus_info['name'] for corpus_info in config['experiment']['train_corpora'].items()], 
+                        #[corpora[corpus_name] for corpus_d in config['experiment']['test_corpora']], 
+        self.train_corpora = train_corpora
+        self.train_data = pd.concat([self.corpora[corpus_info['name']].folds[corpus_info.get('fold', 'all')] 
+                for corpus_info in self.train_corpora])
         self.test_corpora = test_corpora
-        self.train_data = pd.concat([train_corpus.data for train_corpus in train_corpora])
         self.clf = None
         self.label2id = None
         self.test_label_combine = test_label_combine
@@ -41,7 +45,7 @@ class Experiment:
             self.label2id = {l: k for k, l in enumerate(self.train_data['label_str'].astype('category').cat.categories)}
             n_labels = len(id2label)
             if self.do_train:
-                train_length = sum([len(train_corpus.data) for train_corpus in train_corpora])
+                train_length = len(self.train_data)
                 n_labels = len(self.train_data['label_str'].unique())
                 self.train_data['label'] = self.train_data['label_str'].astype('category').cat.codes
             self.clf = BertClassifier(self.name, self.do_train, load=classifier['load'], 
@@ -74,6 +78,10 @@ class Experiment:
     
     def evaluate(self):
         # Apply labels to test corpora (should probably do as a function called in corpus.py)
-        for corpus in self.test_corpora:
-            corpus.data['label'] = corpus.data['label_str'].map(self.label2id)
-        self.clf.evaluate(self.test_corpora)
+        test_corpora = []
+        for corpus_info in self.test_corpora:
+            corpus = self.corpora[corpus_info['name']]
+            corpus.set_labels(self.label2id)
+            corpus.set_data(corpus_info.get('fold', 'all'))
+            test_corpora.append(corpus)
+        self.clf.evaluate(test_corpora)
