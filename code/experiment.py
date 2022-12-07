@@ -29,12 +29,10 @@ class Experiment:
         self.do_train = train
         self.do_test = test
         self.corpora = corpora
-        # TODO: select folds from self.corpora
-                        #[corpora[corpus_info['name'] for corpus_info in config['experiment']['train_corpora'].items()], 
-                        #[corpora[corpus_name] for corpus_d in config['experiment']['test_corpora']], 
         self.train_corpora = train_corpora
         self.train_data = pd.concat([self.corpora[corpus_info['name']].folds[corpus_info.get('fold', 'all')] 
                 for corpus_info in self.train_corpora])
+        self.remove_train_duplicates()
         self.test_corpora = test_corpora
         self.clf = None
         self.label2id = None
@@ -49,13 +47,13 @@ class Experiment:
                 n_labels = len(self.train_data['label_str'].unique())
                 self.train_data['label'] = self.train_data['label_str'].astype('category').cat.codes
             self.clf = BertClassifier(self.name, self.do_train, load=classifier['load'], 
-                train_length=train_length, 
-                n_labels = n_labels,
-                id2label = id2label,
-                label2id = self.label2id,
-                n_epochs=classifier['n_epochs'],
-                checkpoints = classifier.get('checkpoints', None),
-                test_label_combine=self.test_label_combine,
+                    train_length=train_length, 
+                    n_labels = n_labels,
+                    id2label = id2label,
+                    label2id = self.label2id,
+                    n_epochs=classifier['n_epochs'],
+                    checkpoints = classifier.get('checkpoints', None),
+                    test_label_combine=self.test_label_combine,
                 )
         
     def run(self):
@@ -65,14 +63,6 @@ class Experiment:
             self.evaluate()
         
     def train(self):
-        # Prepare training set, including labels
-        #train_data = pd.concat([self.train_pos.data, self.train_neg.data])
-        # List of arrays of labels, 0 or 1 for each class (1-hot encoded)
-        #self.train_data['label'] = [arr[0] for arr in np.split(pd.get_dummies(self.train_data['label_str']).values, 
-        #                                len(self.train_data), axis=0)]
-        # Trying just passing indices instead of one-hot arrays (so shape of 1)
-        #self.train_data['label_str'] = self.train_data['label_str'].astype('category')
-
         # Train
         self.clf.train(self.train_data)
     
@@ -85,3 +75,12 @@ class Experiment:
             corpus.set_data(corpus_info.get('fold', 'all'))
             test_corpora.append(corpus)
         self.clf.evaluate(test_corpora)
+
+    def remove_train_duplicates(self):
+        """ Remove training set duplicates that may emerge from combining corpora """
+        # Sort so that instances with labels are first
+        if 'label' in self.train_data.columns:
+            self.train_data.sort_values(['label'], inplace=True)
+        elif 'label_str' in self.train_data.columns:
+            self.train_data.sort_values(['label_str'], inplace=True)
+        self.train_data.drop_duplicates('text', inplace=True)

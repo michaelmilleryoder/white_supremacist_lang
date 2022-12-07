@@ -187,17 +187,27 @@ corpora:
   #      load_paths:
   #        - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
 
-  annotated_rieger2021: # just rieger2021 for training
-    create: False
-    label: {1: white_supremacist, 0: neutral}
-    test_size: 0.3
-    datasets:
-      - name: rieger2021
-        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
-        domain: forum
-        load_paths:
-          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
-          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+  #annotated_rieger2021: # just rieger2021 for training
+  #  create: False
+  #  label: {1: white_supremacist, 0: neutral}
+  #  test_size: 0.3
+  #  datasets:
+  #    - name: rieger2021
+  #      source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+  #      domain: forum
+  #      load_paths:
+  #        - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+  #        - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  #annotated_lda: # my personal annotations of white supremacist corpus examples, by LDA topioc
+  #  create: False
+  #  label: {1: white_supremacist, 0: neutral, -1: neutral}
+  #  datasets:
+  #    - name: lda_annotations
+  #      source: 4chan # is majority, but has a mix
+  #      domain: forum # is majority, but has a mix
+  #      load_paths:
+  #        - '../data/white_supremacist_annotations_30topics.csv'
 
   domain_test: # out-of-domain evaluations
     create: False
@@ -222,18 +232,19 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: annotated_rieger2021_train_612_test
+  name: binary_ws_2topic_neutral_37910_test
   train: False
   test: True
   train_corpora: # Still needed for eval runs to get ID to label mappings
-    #- name: white_supremacist_train
-    #- name: neutral_train
+    - name: white_supremacist_train
+    - name: neutral_train
     #- name: antiracist_train
-    - name: annotated_rieger2021
-      fold: train
+    #- name: annotated_lda
+    #- name: annotated
+    #  fold: train
   test_corpora: 
     - name: annotated
-      fold: test
+      #fold: test
     - name: domain_test
     - name: bias_test
   test_label_combine: {antiracist: neutral}
@@ -241,4 +252,4 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     n_epochs: 8
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/annotated_rieger2021_train/checkpoint-612'
+    load: '../output/bert/binary_ws_2topic_neutral/checkpoint-37910'

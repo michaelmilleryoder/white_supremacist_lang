@@ -35,7 +35,7 @@ class MultiClassTrainer(Trainer):
 class BertClassifier:
 
     def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_labels: int = 2, 
-        id2label: dict = None, label2id: dict = None, n_epochs: int = 5, checkpoints: str = None, 
+        id2label: dict = None, label2id: dict = None, n_epochs: int = 5, checkpoints: str = 'epoch', 
         test_label_combine: dict = None):
         """ Args:
                 exp_name: name of the experiment (for the output filename)
@@ -208,10 +208,15 @@ class BertClassifier:
                 Tuple with (HuggingFace DatasetDict with train and test splits (optionally), tokenized dataset)
         """
         print('Preparing training data...')
+        # TODO: update to split keeping indices independent between train and test with GroupShuffleSplit
         ds = Dataset.from_pandas(data)
         if split:
-            ds = ds.train_test_split(test_size=0.1)
+            ds = ds.train_test_split(test_size=0.1, seed=9)
         tokenized = ds.map(self.preprocess, batched=True)
+        #ds = Dataset.from_pandas(data)
+        #if split:
+        #    ds = ds.train_test_split(test_size=0.1, seed=9)
+        #tokenized = ds.map(self.preprocess, batched=True)
         return (ds, tokenized)
 
     def preprocess(self, examples):

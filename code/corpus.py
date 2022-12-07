@@ -26,7 +26,7 @@ class Corpus:
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
                     min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: dict = None,
-                    test_size: float = None, selected_fold: str = 'all'):
+                    test_size: float = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -43,10 +43,10 @@ class Corpus:
                         'query' of posts to consider removing, 'exclude_topics' with a list of topics to exclude
                 sample: dict of info on sample a portion of the full corpus, or None if not sampling
                         query: to select data, 
-                        sample_n: n to sample from that queried data, or a fraction
+                        sample_n: n to sample from that queried data
+                        sample_factor: factor to multiply/sample the data by
                 test_size: size (fraction) of the corpus to randomly sample as a test split.
                         Training and test splits (as well as the original) will be saved out.
-                selected_fold: split to be used as primary data for this corpus. Default is 'all'
         """
         self.name = name
         self.base_dirpath = '../data/corpora'
@@ -74,7 +74,6 @@ class Corpus:
         if self.test_size is not None:
             self.train_suffix = f'_train{int((1-self.test_size)*100)}'
             self.test_suffix = f'_test{int(self.test_size*100)}'
-        self.selected_fold = selected_fold
         self.folds = {}
         self.data = None
 
@@ -90,14 +89,15 @@ class Corpus:
                     dataset.print_stats()
                 dfs.append(dataset.data)
             self.folds['all'] = pd.concat(dfs).drop_duplicates(subset='text')
+            if self.lda_filter is not None:
+                self.filter_lda()
             if self.test_size is not None:
                 self.folds['train'], self.folds['test'] = train_test_split(
                     self.folds['all'], test_size=self.test_size, random_state=9)
-            if self.lda_filter is not None:
-                self.filter_lda()
             if self.sample_info is not None:
                 self.sample()
-            self.data = self.folds[self.selected_fold]
+            # Gets complicated if both sampling/filtering and then splitting into folds happens
+            self.data = self.folds['all']
             self.print_save_stats()
             self.save()
         else:
@@ -113,7 +113,7 @@ class Corpus:
                 train_path = str(path.with_stem(str(path.stem) + self.train_suffix))
                 test_path = str(path.with_stem(str(path.stem) + self.test_suffix))
                 self.folds['train'], self.folds['test'] = self.load_corpus(train_path), self.load_corpus(test_path)
-            self.data = self.folds[self.selected_fold]
+            self.data = self.folds['all']
 
         self.assign_labels()
 
@@ -163,10 +163,21 @@ class Corpus:
 
     def sample(self):
         """ Sample particular portions of the corpus """
-        selected = self.data.query(self.sample_info['query'])
-        rest = self.data[~self.data.index.isin(selected.index)]
-        sampled = selected.sample(self.sample_info['sample_n'])
-        self.data = pd.concat([sampled, rest]).sort_index()
+        for fold, data in self.folds.items():
+            if fold == 'test':
+                continue # use full, unduplicated test sets
+            if 'query' in self.sample_info:
+                selected = data.query(self.sample_info['query'])
+            else:
+                selected = data
+            rest = data[~data.index.isin(selected.index)]
+            frac = self.sample_info.get('sample_factor', None)
+            replace = False
+            if frac > 1:
+               replace = True 
+            sampled = selected.sample(n=self.sample_info.get('sample_n', None), 
+                    frac=frac, replace=replace)
+            self.folds[fold] = pd.concat([sampled, rest]).sort_index()
 
     def print_save_stats(self):
         """ Print, save out stats on the dataset in a log or output dir 
@@ -204,11 +215,11 @@ class Corpus:
         self.data.to_pickle(self.tmp_fpath)
         if self.test_size is not None:
             path = Path(self.fpath)
-            tmp_fpath = Path(self.tmp_path)
+            tmp_fpath = Path(self.tmp_fpath)
             train_json_path = str(path.with_stem(str(path.stem) + self.train_suffix))
             test_json_path = str(path.with_stem(str(path.stem) + self.test_suffix))
-            train_pkl_path = str(tmp_path.with_stem(str(tmp_path.stem) + self.train_suffix))
-            test_pkl_path = str(tmp_path.with_stem(str(tmp_path.stem) + self.test_suffix))
+            train_pkl_path = str(tmp_fpath.with_stem(str(tmp_fpath.stem) + self.train_suffix))
+            test_pkl_path = str(tmp_fpath.with_stem(str(tmp_fpath.stem) + self.test_suffix))
             self.folds['train'].to_json(train_json_path, orient='table', indent=4)
             self.folds['train'].to_pickle(train_pkl_path)
             self.folds['test'].to_json(train_json_path, orient='table', indent=4)

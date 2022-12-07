@@ -13,17 +13,17 @@ corpora:
   #      load_paths:
   #        - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
 
-  annotated_rieger2021: # just rieger2021 for training
-    create: True
-    label: {1: white_supremacist, 0: neutral}
-    test_size: 0.3
-    datasets:
-      - name: rieger2021
-        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
-        domain: forum
-        load_paths:
-          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
-          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+  #annotated_rieger2021: # just rieger2021 for training
+  #  create: True
+  #  label: {1: white_supremacist, 0: neutral}
+  #  test_size: 0.3
+  #  datasets:
+  #    - name: rieger2021
+  #      source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+  #      domain: forum
+  #      load_paths:
+  #        - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+  #        - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
 
   annotated: # test sets human-annotated for white supremacy
     create: False
@@ -54,6 +54,16 @@ corpora:
           - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
           - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
 
+  annotated_lda: # my personal annotations of white supremacist corpus examples, by LDA topioc
+    create: False
+    label: {1: white_supremacist, 0: neutral, -1: neutral}
+    datasets:
+      - name: lda_annotations
+        source: 4chan # is majority, but has a mix
+        domain: forum # is majority, but has a mix
+        load_paths:
+          - '../data/white_supremacist_annotations_30topics.csv'
+
   domain_test: # out-of-domain evaluations
     create: False
     label: white_supremacist
@@ -77,12 +87,13 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: annotated_rieger2021_train
+  name: annotated_with_lda_annotations
   train: True
   test: True
   train_corpora:
-    - name: annotated_rieger2021
+    - name: annotated
       fold: train
+    - name: annotated_lda
   test_corpora: 
     - name: annotated
       fold: test
