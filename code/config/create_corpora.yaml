@@ -99,7 +99,7 @@ corpora:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
 
   neutral_train:
-    create: True
+    create: False
     label: neutral
     min_word_limit: 1
     datasets:
@@ -127,7 +127,7 @@ corpora:
       - 'white_supremacist_train'
 
   antiracist_train:
-    create: True
+    create: False
     label: antiracist
     min_word_limit: 1
     datasets:
@@ -150,27 +150,28 @@ corpora:
       - 'white_supremacist_train'
       - 'neutral_train'
 
-  annotated_test: # test sets human-annotated for white supremacy
-    create: False
+  annotated: # test sets human-annotated for white supremacy
+    create: True
     label: {1: white_supremacist, 0: neutral}
+    test_size: 0.3
     datasets:
       - name: alatawi2021
         source: twitter
         domain: tweet
         load_paths:
           - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
-      #- name: siegel2021 
-      #  source: twitter
-      #  domain: tweet
-      #  load_paths:
-      #    - '../data/siegel2021/white_nationalist_training_data.csv'
-      #    - '../data/siegel2021/hate_speech_training_data.csv'
       - name: siegel2021_white_nationalist_only
         source: twitter
         domain: tweet
         load_paths:
           - '../data/siegel2021/white_nationalist_training_data.csv'
           - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
 
   domain_test: # out-of-domain evaluations
     create: False
@@ -199,13 +200,17 @@ experiment: # define experiments where train particular classifiers on particula
   train: False
   test: False
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
-    - white_supremacist_train
-    - neutral_train
-    - antiracist_train
+    - name: white_supremacist_train
+    - name: neutral_train
+    - name: antiracist_train
+    - name: annotated_5x
+      fold: train
+    - name: annotated_lda_5x
   test_corpora: 
-    - annotated_test
-    - domain_test
-    - bias_test
+    - name: annotated_5x
+      fold: test
+    - name: domain_test
+    - name: bias_test
   classifier: 
     type: bert
     n_epochs: 10

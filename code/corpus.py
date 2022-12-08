@@ -80,6 +80,7 @@ class Corpus:
     def load(self):
         """ Load corpus by creating it (loading and processing datasets) or loading it from disk """
         dfs = []
+
         if self.create:
             for dataset in self.datasets:
                 print(f"\tLoading and processing {dataset.name} ({dataset.source})...")
@@ -100,6 +101,7 @@ class Corpus:
             self.data = self.folds['all']
             self.print_save_stats()
             self.save()
+
         else:
             # Try loading from pickle since it's faster
             if os.path.exists(self.tmp_fpath):

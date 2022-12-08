@@ -7,11 +7,12 @@ import pdb
 from pprint import pprint
 
 import pandas as pd
-from datasets import Dataset, load_metric
+from datasets import Dataset, DatasetDict, load_metric
 from transformers import (AutoTokenizer, DataCollatorWithPadding, 
         AutoModelForSequenceClassification, TrainingArguments, Trainer)
 import numpy as np
 import torch
+from sklearn.model_selection import GroupShuffleSplit
 
 from corpus import Corpus
 
@@ -209,9 +210,15 @@ class BertClassifier:
         """
         print('Preparing training data...')
         # TODO: update to split keeping indices independent between train and test with GroupShuffleSplit
-        ds = Dataset.from_pandas(data)
         if split:
-            ds = ds.train_test_split(test_size=0.1, seed=9)
+            ds = DatasetDict()
+            splitter = GroupShuffleSplit(test_size=0.1, n_splits=1, random_state=9)
+            train_inds, test_inds = next(splitter.split(data, groups=data.index))
+            ds['train'] = Dataset.from_pandas(data.iloc[train_inds])
+            ds['test'] = Dataset.from_pandas(data.iloc[test_inds])
+        else:
+            ds = Dataset.from_pandas(data)
+
         tokenized = ds.map(self.preprocess, batched=True)
         #ds = Dataset.from_pandas(data)
         #if split:
