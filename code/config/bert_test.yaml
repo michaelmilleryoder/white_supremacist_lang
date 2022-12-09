@@ -239,6 +239,32 @@ corpora:
   #      load_paths:
   #        - '../data/white_supremacist_annotations_30topics.csv'
 
+  annotated_lda_5x: # my personal annotations of white supremacist corpus examples, by LDA topioc
+    create: False
+    label: {1: white_supremacist, 0: neutral, -1: neutral}
+    sample:
+      sample_factor: 5
+    datasets:
+      - name: lda_annotations
+        source: 4chan # is majority, but has a mix
+        domain: forum # is majority, but has a mix
+        load_paths:
+          - '../data/white_supremacist_annotations_30topics.csv'
+
+  annotated_5x_train70_singles: # created in corpus_stats.ipynb, load-only
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+
+  annotated_lda: # my personal annotations of white supremacist corpus examples, by LDA topioc
+    create: False
+    label: {1: white_supremacist, 0: neutral, -1: neutral}
+    datasets:
+      - name: lda_annotations
+        source: 4chan # is majority, but has a mix
+        domain: forum # is majority, but has a mix
+        load_paths:
+          - '../data/white_supremacist_annotations_30topics.csv'
+
   domain_test: # out-of-domain evaluations
     create: False
     label: white_supremacist
@@ -262,18 +288,20 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_2topic_annotated_5x_50970_test
+  name: annotated_with_lda_annotations_513_test
   train: False
   test: True
   train_corpora: # Still needed for eval runs to get ID to label mappings
-    - name: white_supremacist_train
-    - name: neutral_train
-    - name: antiracist_train
-    - name: annotated_5x
-      fold: train
-    #- name: annotated_lda
+    #- name: white_supremacist_train
+    #- name: neutral_train
+    #- name: antiracist_train
+    #- name: annotated_5x
+    #  fold: train
+    #- name: annotated_lda_5x
     #- name: annotated
     #  fold: train
+    - name: annotated_5x_train70_singles
+    - name: annotated_lda
   test_corpora: 
     - name: annotated_5x
       fold: test
@@ -284,4 +312,4 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     n_epochs: 8
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/3way_2topic_annotated_5x/checkpoint-50970'
+    load: '../output/bert/annotated_with_lda_annotations/checkpoint-513'

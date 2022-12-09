@@ -25,8 +25,8 @@ class Corpus:
     """
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
-                    min_word_limit: int = 1, label = None, lda_filter: dict = None, sample: dict = None,
-                    test_size: float = None):
+                    match_factor: int = 1, min_word_limit: int = 1, label = None, lda_filter: dict = None, 
+                    sample: dict = None, test_size: float = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -35,6 +35,7 @@ class Corpus:
                 datasets: list of dictionaries with names and associated loading paths for datasets
                 ref_corpora: a list of the names of any reference corpora that are used to construct this corpus. 
                         Will be loaded from disk (must already be saved out) if create is True
+                match_factor: factor to multiply even sample with reference corpus by
                 min_word_limit: Minimum word limit of posts. Put 1 to take all posts
                 label: classification label to apply to this corpus (string), 
                         or mapping from dataset labels to corpus labels (dict)
@@ -56,6 +57,7 @@ class Corpus:
         self.tmp_fpath = self.base_tmp_fpath.format(self.name) # pickling for faster loading
         self.create = create
         self.ref_corpora = ref_corpora
+        self.match_factor = match_factor
         ref_corpora = None
         if self.ref_corpora is not None and self.create:
             # Load reference corpora
@@ -67,7 +69,7 @@ class Corpus:
         self.label = label
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], 
-                ref_corpora=ref_corpora, min_word_limit=min_word_limit) for ds in datasets]
+                ref_corpora=ref_corpora, match_factor=self.match_factor, min_word_limit=min_word_limit) for ds in datasets]
         self.lda_filter = lda_filter
         self.sample_info = sample
         self.test_size = test_size

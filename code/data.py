@@ -50,7 +50,7 @@ class Dataset:
         return set(cls.__subclasses__()).union(
             [s for c in cls.__subclasses__() for s in c.all_subclasses()])
 
-    def __new__(cls, name, source, domain, load_paths, ref_corpora=None, min_word_limit=1):
+    def __new__(cls, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1):
         """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
         #subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
@@ -60,7 +60,7 @@ class Dataset:
         instance = super(Dataset, subclass).__new__(subclass)
         return instance
 
-    def __init__(self, name, source, domain, load_paths, ref_corpora=None, min_word_limit=1):
+    def __init__(self, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1):
         """ Args:
                 name: dataset name
                 source: source platform
@@ -68,6 +68,7 @@ class Dataset:
                 load_paths: list of arguments for loading the datasets (like file paths)
                 ref_corpora: a dict with keys as corpora names and values dataframes of other corpora 
                     to use in assembling this dataset
+                match_factor: factor to multiply even sample with reference corpus by
                 min_word_limit: Minimum word limit of posts. Put 1 to take all posts
         """
         self.name = name
@@ -81,6 +82,7 @@ class Dataset:
             for name, corpus in ref_corpora.items():
                 self.ref_corpora[name] = corpus.query(f'domain=="{domain}"').copy()
                 self.lookup[name] = corpus_year_count(self.ref_corpora[name])
+        self.match_factor = match_factor
         self.min_word_limit = min_word_limit
         self.n_jobs = 20 # number of processes for multiprocessing of data
         self.data = pd.DataFrame()
@@ -455,9 +457,10 @@ class Reddit_matchDataset(RawReddit):
         nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         self.data['timestamp'] = pd.to_datetime(self.data['created_utc'], unit='s', utc=True)
         self.data.reset_index(drop=True, inplace=True)
-        self.data = self.data.groupby(self.data.timestamp.dt.year).apply(
-            lambda group: group.sample(
-            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
+        self.data = self.data.groupby(self.data.timestamp.dt.year).apply(lambda group: group.sample(
+            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * 2 * self.match_factor,
+            random_state=9)).reset_index(drop=True)
+                # double sample to meet white supremacist forum data length
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
@@ -465,23 +468,6 @@ class Reddit_matchDataset(RawReddit):
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_reddit, 
                 tqdm(zipped, total=len(self.data), ncols=80))))
         self.uniform_format()
-
-    #def print_stats(self):
-    #    """ Print statistics on number of posts and word count per year compared to the reference corpus
-    #        TODO: need to get subreddit proportions before uniform_format
-    #    """
-
-    #    # Subreddit proportions
-    #    sub_distro = pd.concat([self.data.subreddit.value_counts(), self.data.subreddit.value_counts(normalize=True)], axis=1)
-    #    sub_distro.columns = ['post_count', 'proportion']
-    #    print(sub_distro.to_string())
-
-    #    # Comparison to matching white supremacist data
-    #    post_counts = pd.concat([self.lookup['post_count'], 
-    #        self.data.groupby(self.data.created_utc.dt.year).text.count()], axis=1)
-    #    print(post_counts.to_string())
-
-    #    super().print_stats()
 
 
 class Reddit_antiracistDataset(RawReddit):
@@ -519,12 +505,11 @@ class Discord_matchDataset(Dataset):
         tokenizer = TweetTokenizer(strip_handles=True)
 
         # Iteratively sample and process, until match the word count of white supremacist matching chat data
-        ws_word_count = self.ref_corpora['white_supremacist_train'].word_count.sum()
+        ws_word_count = self.ref_corpora['white_supremacist_train'].word_count.sum() * self.match_factor
         ws_len = len(self.ref_corpora['white_supremacist_train'])
         sampled_words = 0
         sampled = []
-        pbar = tqdm(total=int(ws_word_count*1.1), ncols=80) # sometimes progress bar goes over
-        pdb.set_trace()
+        pbar = tqdm(total=int(ws_word_count*1.3), ncols=80) # sometimes progress bar goes over
         while sampled_words < ws_word_count:
             # Sample, tokenize and process
             sample = self.data.sample(ws_len*2) # generally has fewer words/post. Might lead to duplicates, but drop them later
@@ -565,8 +550,8 @@ class News_matchDataset(Dataset):
         match = self.data[self.data.year.isin(self.lookup['white_supremacist_train'].index)]
         self.data = match
         self.data = match.groupby(match.year).apply(lambda group: group.sample(
-                self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]*2 
-            )).reset_index(drop = True)
+                self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]*self.match_factor,
+                random_state=9)).reset_index(drop = True)
 
         # Process data
         with Pool(self.n_jobs) as p:
@@ -593,7 +578,8 @@ class Twitter_matchDataset(RawTwitter):
         self.data.reset_index(drop=True, inplace=True)
         self.data['created_at'] = pd.to_datetime(self.data['created_at'])
         self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
-            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name]
+            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * self.match_factor,
+            random_state=9
             )).reset_index(drop=True)
         super().process()
 
@@ -608,7 +594,8 @@ class Twitter_antiracistDataset(Twitter_matchDataset):
         self.data['created_at'] = pd.to_datetime(self.data['created_at'])
         self.data = self.data[self.data.created_at.dt.year.isin(self.lookup['white_supremacist_train'].index)]
         self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
-                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name])).reset_index(drop=True)
+                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name], random_state=9)
+                ).reset_index(drop=True)
         super().process()
 
 
@@ -648,7 +635,8 @@ class Siegel2021Dataset(Dataset):
         n_wn = len(filtered_wn.query('white_nationalism_total == "yes"'))
         self.data = pd.concat([
             filtered_wn.query('white_nationalism_total == "yes"').rename(columns={'white_nationalism_total': 'white_nationalism'}),
-            hs_nodups.query('hatespeech == "no"').rename(columns={'hatespeech': 'white_nationalism'}).sample(round(n_wn*7/3)),
+            #hs_nodups.query('hatespeech == "no"').rename(columns={'hatespeech': 'white_nationalism'}).sample(round(n_wn*7/3)),
+            hs_nodups.query('hatespeech == "no"').rename(columns={'hatespeech': 'white_nationalism'}),
         ]).sample(frac=1)
 
     def process(self):
@@ -836,8 +824,7 @@ class Medium_antiracistDataset(Dataset):
 
     def process(self):
         """ Sample data to match the number of long-form articles in the white supremacist corpus """
-        ws_long = self.ref_corpora['white_supremacist_train']
-        self.data = self.data.sample(len(ws_long))
+        self.data = self.data.sample(len(self.ref_corpora['white_supremacist_train']), random_state=9)
 
         # Process
         self.data['text'], self.data['word_count'] = list(zip(*tqdm(self.data['text'].map(tokenize_lowercase), ncols=80)))
