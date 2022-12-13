@@ -358,8 +358,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  #name: 3way_2topic_annotated_rieger2021_siegel2021_5x_30630_test
-  name: 3way_2topic_23877_test
+  name: 3way_2topic_annotated_alatawi2021_siegel2021_5x_71792_test
   train: False
   test: True
   train_corpora: # Still needed for eval runs to get ID to label mappings
@@ -370,17 +369,17 @@ experiment: # define experiments where train particular classifiers on particula
     #  fold: train
     #- name: annotated
     #  fold: train
-    #- name: annotated_alatawi2021_5x
+    - name: annotated_alatawi2021_5x
     #- name: annotated_rieger2021_5x
-    #- name: annotated_siegel2021_5x
-    #- name: annotated_lda_5x
+    - name: annotated_siegel2021_5x
+    - name: annotated_lda_5x
   test_corpora: 
     #- name: annotated_alatawi2021
     #- name: annotated_siegel2021
-    #- name: annotated_rieger2021
+    - name: annotated_rieger2021
     #- name: annotated_5x
     #  fold: test
-    - name: annotated
+    #- name: annotated
     - name: domain_test
     - name: bias_test
   test_label_combine: {antiracist: neutral}
@@ -388,5 +387,4 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     n_epochs: 8
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/3way_2topic_annotated_rieger2021_siegel2021_5x/checkpoint-30630'
-    load: '../output/bert/3way_2topic/checkpoint-23877'
+    load: '../output/bert/3way_2topic_annotated_alatawi2021_siegel2021_5x/checkpoint-71792'
