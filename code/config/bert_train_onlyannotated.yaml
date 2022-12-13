@@ -2,32 +2,10 @@
 # Define which datasets are in which corpora
 corpora:
 
-  #annotated_alatawi2021: # just alatawi2021 for training
-  #  create: True
-  #  label: {1: white_supremacist, 0: neutral}
-  #  test_size: 0.3
-  #  datasets:
-  #    - name: alatawi2021
-  #      source: twitter
-  #      domain: tweet
-  #      load_paths:
-  #        - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
-
-  #annotated_rieger2021: # just rieger2021 for training
-  #  create: True
-  #  label: {1: white_supremacist, 0: neutral}
-  #  test_size: 0.3
-  #  datasets:
-  #    - name: rieger2021
-  #      source: 4chan # actually is reddit, 4chan and 8chan (could separate)
-  #      domain: forum
-  #      load_paths:
-  #        - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
-  #        - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
-
   annotated_alatawi2021:
     create: False
     label: {1: white_supremacist, 0: neutral}
+  #  test_size: 0.3
     datasets:
       - name: alatawi2021
         source: twitter
@@ -38,6 +16,7 @@ corpora:
   annotated_rieger2021:
     create: False
     label: {1: white_supremacist, 0: neutral}
+  #  test_size: 0.3
     datasets:
       - name: rieger2021
         source: 4chan # actually is reddit, 4chan and 8chan (could separate)
@@ -50,7 +29,7 @@ corpora:
     create: False
     label: {1: white_supremacist, 0: neutral}
     datasets:
-      - name: siegel2021_white_nationalist_only
+      - name: siegel2021
         source: twitter
         domain: tweet
         load_paths:
@@ -67,18 +46,24 @@ corpora:
         domain: tweet
         load_paths:
           - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
-      #- name: siegel2021 
-      #  source: twitter
-      #  domain: tweet
-      #  load_paths:
-      #    - '../data/siegel2021/white_nationalist_training_data.csv'
-      #    - '../data/siegel2021/hate_speech_training_data.csv'
-      - name: siegel2021_white_nationalist_only
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+      - name: siegel2021 
         source: twitter
         domain: tweet
         load_paths:
           - '../data/siegel2021/white_nationalist_training_data.csv'
           - '../data/siegel2021/hate_speech_training_data.csv'
+      #- name: siegel2021_white_nationalist_only
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths:
+      #    - '../data/siegel2021/white_nationalist_training_data.csv'
+      #    - '../data/siegel2021/hate_speech_training_data.csv'
       - name: rieger2021
         source: 4chan # actually is reddit, 4chan and 8chan (could separate)
         domain: forum
@@ -86,9 +71,9 @@ corpora:
           - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
           - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
 
-  annotated_5x_train70_singles: # created in corpus_stats.ipynb, load-only
-    create: False
-    label: {1: white_supremacist, 0: neutral}
+  #annotated_5x_train70_singles: # created in corpus_stats.ipynb, load-only
+  #  create: False
+  #  label: {1: white_supremacist, 0: neutral}
 
   annotated_lda: # my personal annotations of white supremacist corpus examples, by LDA topioc
     create: False
@@ -127,11 +112,14 @@ experiment: # define experiments where train particular classifiers on particula
   train: True
   test: True
   train_corpora:
+    #- name: annotated_alatawi2021
     - name: annotated_rieger2021
     - name: annotated_siegel2021
     - name: annotated_lda
   test_corpora: 
     - name: annotated_alatawi2021
+    #- name: annotated_rieger2021
+    #- name: annotated_siegel2021
     #- name: annotated_5x
     #  fold: test
     - name: domain_test
