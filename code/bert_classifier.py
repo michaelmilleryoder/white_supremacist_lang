@@ -12,9 +12,24 @@ from transformers import (AutoTokenizer, DataCollatorWithPadding,
         AutoModelForSequenceClassification, TrainingArguments, Trainer)
 import numpy as np
 import torch
+from torch import nn
 from sklearn.model_selection import GroupShuffleSplit
 
 from corpus import Corpus
+
+
+class WeightedLossTrainer(Trainer):
+    """ Custom class to use a loss weighted by labels """
+    
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        # forward pass
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
+        # compute custom loss (with 3 labels
+        loss_fct = nn.CrossEntropyLoss(weight=torch.Tensor([1.0, 1.0, 5.0]).cuda())
+        loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        return (loss, outputs) if return_outputs else loss
 
 
 class MultiClassTrainer(Trainer):
@@ -119,7 +134,8 @@ class BertClassifier:
         #    self.trainer_class = MultiClassTrainer
         #else:
         #    self.trainer_class = Trainer
-        self.trainer_class = Trainer
+        #self.trainer_class = Trainer
+        self.trainer_class = WeightedLossTrainer
         if train:
             self.trainer = None
         else:

@@ -458,7 +458,7 @@ class Reddit_matchDataset(RawReddit):
         self.data['timestamp'] = pd.to_datetime(self.data['created_utc'], unit='s', utc=True)
         self.data.reset_index(drop=True, inplace=True)
         self.data = self.data.groupby(self.data.timestamp.dt.year).apply(lambda group: group.sample(
-            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * 2 * self.match_factor,
+            int(self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * 2 * self.match_factor),
             random_state=9)).reset_index(drop=True)
                 # double sample to meet white supremacist forum data length
         zipped = zip(self.data.body, itertools.repeat(nlp))
@@ -505,7 +505,7 @@ class Discord_matchDataset(Dataset):
         tokenizer = TweetTokenizer(strip_handles=True)
 
         # Iteratively sample and process, until match the word count of white supremacist matching chat data
-        ws_word_count = self.ref_corpora['white_supremacist_train'].word_count.sum() * self.match_factor
+        ws_word_count = int(self.ref_corpora['white_supremacist_train'].word_count.sum() * self.match_factor)
         ws_len = len(self.ref_corpora['white_supremacist_train'])
         sampled_words = 0
         sampled = []
@@ -550,7 +550,7 @@ class News_matchDataset(Dataset):
         match = self.data[self.data.year.isin(self.lookup['white_supremacist_train'].index)]
         self.data = match
         self.data = match.groupby(match.year).apply(lambda group: group.sample(
-                self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]*self.match_factor,
+                int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]*self.match_factor),
                 random_state=9)).reset_index(drop = True)
 
         # Process data
@@ -578,7 +578,7 @@ class Twitter_matchDataset(RawTwitter):
         self.data.reset_index(drop=True, inplace=True)
         self.data['created_at'] = pd.to_datetime(self.data['created_at'])
         self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
-            self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * self.match_factor,
+            int(self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * self.match_factor),
             random_state=9
             )).reset_index(drop=True)
         super().process()
@@ -601,6 +601,18 @@ class Twitter_antiracistDataset(Twitter_matchDataset):
 
 class Alatawi2021Dataset(Dataset):
     """ Tweets annotated for white supremacy from Alatawi+ 2021 paper """
+    
+    def process(self):
+        """ Process data for evaluating classifiers based on other datasets. """
+        self.data['text'], self.data['word_count'] = list(zip(*self.data['input.text'].map(tokenize_lowercase)))
+        self.data['label'] = self.data['Voting and Final Labels']
+        self.uniform_format()
+
+
+class Alatawi2021_white_supremacistDataset(Dataset):
+    """ Tweets annotated for white supremacy from Alatawi+ 2021 paper 
+        This dataset only keeps the tweets labeled for white supremacy
+    """
     
     def process(self):
         """ Process data for evaluating classifiers based on other datasets. """
@@ -668,28 +680,39 @@ class Siegel2021_white_nationalist_onlyDataset(Siegel2021Dataset):
         self.data = self.data[~self.data.text.isin(hs_examples.index)]
 
 
+class Siegel2021_white_supremacistDataset(Siegel2021Dataset):
+    """ (Only) tweets annotated for white nationalism from Siegel+ 2021 paper.
+    """
+
+    def load(self):
+        super().load()
+        self.data = self.data.query('white_nationalism == "yes"')
+
+
 class Adl_heatmapDataset(Dataset):
     """ Offline propaganda from ADL HEATMap dataset """
 
     def load(self):
-        # Load quotes (already extracted from event descriptions)
-        quotes = pd.read_csv(self.load_paths[0])
-        quotes['timestamp'] = pd.to_datetime(quotes.date, format='%m/%d/%y', errors='coerce', utc=True).fillna(
-                pd.to_datetime(quotes.date, format='%y-%b', errors='coerce', utc=True))
+        # Load quotes from white supremacist groups (already extracted from event descriptions)
+        self.data = pd.read_json(self.load_paths[0], orient='table').reset_index(drop=True)
 
-        # Filter to quotes from groups with white supremacist ideologies
-        incidents = pd.read_csv(self.load_paths[1])
-        incidents['timestamp'] = pd.to_datetime(incidents.date, utc=True)
+        #quotes = pd.read_csv(self.load_paths[0])
+        #quotes['timestamp'] = pd.to_datetime(quotes.date, format='%m/%d/%y', errors='coerce', utc=True).fillna(
+        #        pd.to_datetime(quotes.date, format='%y-%b', errors='coerce', utc=True))
 
-        merged = pd.merge(quotes, incidents, how='left', on=['description', 'city', 'timestamp'])
-        self.data = merged[merged['ideology']== 'Right Wing (White Supremacist)']
-        
-        # Remove duplicates
-        self.data = self.data.drop_duplicates(subset='quote').reset_index(drop=True)
+        ## Filter to quotes from groups with white supremacist ideologies
+        #incidents = pd.read_csv(self.load_paths[1])
+        #incidents['timestamp'] = pd.to_datetime(incidents.date, utc=True)
+
+        #merged = pd.merge(quotes, incidents, how='left', on=['description', 'city', 'timestamp'])
+        #self.data = merged[merged['ideology']== 'Right Wing (White Supremacist)']
+        #
+        ## Remove duplicates
+        #self.data = self.data.drop_duplicates(subset='quote').reset_index(drop=True)
 
     def process(self):
         self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].map(tokenize_lowercase)))
-        self.data['label'] = 1 # all labeled as white supremacist
+        #self.data['label'] = 1 # all labeled as white supremacist
         self.uniform_format()
 
 
@@ -772,9 +795,9 @@ class Rieger2021Dataset(Dataset):
             data[col] = data[col].astype('category').cat.rename_categories(identities)
 
         data['Source'] = data.Source.astype('category').cat.rename_categories({
-            1: 'td',
-            2: '4chan_pol',
-            3: '8chan_pol',
+            1: 'reddit', #the_Donald
+            2: '4chan', #4chan_pol
+            3: '8chan', #8chan_pol
         })
 
         data['white_supremacist'] = data['inhuman_ideology'].isin(['white supremacy/white ethnostate', 'National Socialist'])
@@ -794,12 +817,24 @@ class Rieger2021Dataset(Dataset):
         self.uniform_format()
 
 
+class Rieger2021_white_supremacistDataset(Rieger2021Dataset):
+    """ Annotated data from Rieger+ 2021 paper. This dataset just keeps items marked white supremacist. """
+
+    def load(self):
+        super().load()
+        self.data = self.data.query('white_supremacist and Source==@self.source')
+
+
 class Hatecheck_identity_nonhateDataset(Dataset):
     """ Data selected from HateCheck to test lexical bias against marginalized identities """
 
     def load(self):
         self.data = pd.read_csv(self.load_paths[0], index_col=0)
-        selected_cols = ['ident_neutral_nh', 'ident_pos_nh']
+        selected_cols = ['ident_neutral_nh', 'ident_pos_nh', 
+                        'slur_homonym_nh', 'slur_reclaimed_nh',
+                        'negate_neg_nh',
+                        'counter_quote_nh', 'counter_ref_nh',
+                        ]
         self.data = self.data.query('functionality==@selected_cols')
 
     def process(self):

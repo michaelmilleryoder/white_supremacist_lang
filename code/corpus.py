@@ -143,10 +143,10 @@ class Corpus:
         with open(self.lda_filter['vectorizer'], 'rb') as f:
             vectorizer = pickle.load(f)
         if self.lda_filter['query'] is None:
-            selected = self.data
+            selected = self.folds['all']
         else:
-            selected = self.data.query(self.lda_filter['query']).copy()
-            rest = self.data[~self.data.index.isin(selected.index)]
+            selected = self.folds['all'].query(self.lda_filter['query']).copy()
+            rest = self.folds['all'][~self.folds['all'].index.isin(selected.index)]
 
         # Infer topics on documents
         bow = vectorizer.transform(selected.text)
@@ -177,7 +177,7 @@ class Corpus:
             rest = data[~data.index.isin(selected.index)]
             frac = self.sample_info.get('sample_factor', None)
             replace = False
-            if frac > 1:
+            if frac is not None and frac > 1:
                replace = True 
             sampled = selected.sample(n=self.sample_info.get('sample_n', None), 
                     frac=frac, replace=replace)

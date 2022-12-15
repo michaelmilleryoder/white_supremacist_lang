@@ -126,35 +126,34 @@ corpora:
     ref_corpora: 
       - 'white_supremacist_train'
 
-  #neutral_antiracist_size: # all neutral, but size of neutral + antiracist corpus
-  #  create: False
-  #  label: neutral
-  #  min_word_limit: 1
-  #  datasets:
-  #    - name: twitter_match
-  #      source: twitter
-  #      domain: tweet
-  #      load_paths: 
-  #        - '../data/neutral/twitter/'
-  #    - name: discord_match
-  #      source: discord
-  #      domain: chat
-  #      load_paths: 
-  #        - '../../data/discord/v3/content/drive/Shareddrives/Datasets/cleaned-v4/discord-v3'
-  #    - name: reddit_match
-  #      source: reddit
-  #      domain: forum
-  #      load_paths: 
-  #        - '../data/neutral/reddit_comments'
-  #    - name: news_match
-  #      source: news
-  #      domain: long-form
-  #      load_paths: 
-  #        - '../../data/news/now2010-2021/text'
-  #  ref_corpora: 
-  #    - 'white_supremacist_train'
-  #  match_factor: 1.5 # factor to multiply even sample with reference corpus by
-
+  neutral_antiracist_size: # all neutral, but size of neutral + antiracist corpus
+    create: False
+    label: neutral
+    min_word_limit: 1
+    datasets:
+      - name: twitter_match
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '../data/neutral/twitter/'
+      - name: discord_match
+        source: discord
+        domain: chat
+        load_paths: 
+          - '../../data/discord/v3/content/drive/Shareddrives/Datasets/cleaned-v4/discord-v3'
+      - name: reddit_match
+        source: reddit
+        domain: forum
+        load_paths: 
+          - '../data/neutral/reddit_comments'
+      - name: news_match
+        source: news
+        domain: long-form
+        load_paths: 
+          - '../../data/news/now2010-2021/text'
+    ref_corpora: 
+      - 'white_supremacist_train'
+    match_factor: 1.5 # factor to multiply even sample with reference corpus by
 
   antiracist_train:
     create: False
@@ -181,7 +180,7 @@ corpora:
       - 'neutral_train'
 
   annotated: # test sets human-annotated for white supremacy
-    create: True
+    create: False
     label: {1: white_supremacist, 0: neutral}
     test_size: 0.3
     datasets:
@@ -221,7 +220,7 @@ corpora:
           - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
     
   bias_test:
-    create: False
+    create: True
     label: neutral # possibly antiracist for positive uses of identities?
     datasets:
       - name: hatecheck_identity_nonhate
