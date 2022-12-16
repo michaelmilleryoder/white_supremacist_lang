@@ -95,8 +95,8 @@ corpora:
         load_paths:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
 
-  white_supremacist_train_6topic:
-    create: False
+  white_supremacist_train_15topic:
+    create: True
     label: white_supremacist
     min_word_limit: 10
     lda_filter: # remove posts that match certain topics in a trained LDA model. Put Null if not using
@@ -104,7 +104,7 @@ corpora:
       query: Null
       model: '../models/white_supremacist_fulltext_lda30.pkl'
       vectorizer: '../models/white_supremacist_fulltext_countvectorizer.pkl'
-      include_topics: [13,28,25,6,15,9]
+      include_topics: [13,28,25,6,15,9,8,21,19,16,23,2,14,29,4]
       exclude_topics: Null
     sample: # Put Null if not using
       query: 'domain=="forum"' # query to select data
@@ -406,11 +406,11 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_2topic_ws5weight
+  name: 3way_15topic
   train: True
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
-    - name: white_supremacist_train_2topic
+    - name: white_supremacist_train_15topic
     #- name: neutral_antiracist_size
     - name: neutral_train
     - name: antiracist_train

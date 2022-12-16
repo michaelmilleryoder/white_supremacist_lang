@@ -134,8 +134,8 @@ class BertClassifier:
         #    self.trainer_class = MultiClassTrainer
         #else:
         #    self.trainer_class = Trainer
-        #self.trainer_class = Trainer
-        self.trainer_class = WeightedLossTrainer
+        self.trainer_class = Trainer
+        #self.trainer_class = WeightedLossTrainer
         if train:
             self.trainer = None
         else:
