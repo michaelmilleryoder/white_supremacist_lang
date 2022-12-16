@@ -2,6 +2,99 @@
 # Define which datasets are in which corpora
 corpora:
 
+  white_supremacist_train_15topic:
+    create: False
+    label: white_supremacist
+    min_word_limit: 10
+    lda_filter: # remove posts that match certain topics in a trained LDA model. Put Null if not using
+      #query: 'domain=="forum"'
+      query: Null
+      model: '../models/white_supremacist_fulltext_lda30.pkl'
+      vectorizer: '../models/white_supremacist_fulltext_countvectorizer.pkl'
+      include_topics: [13,28,25,6,15,9,8,21,19,16,23,2,14,29,4]
+      exclude_topics: Null
+    sample: # Put Null if not using
+      query: 'domain=="forum"' # query to select data
+      sample_n: 100000 # n to sample from that queried data 
+    datasets:  # any unique name, source, or domain is its own
+      - name: qian2018
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/qian2018/data.jsonl
+      - name: elsherief2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/elsherief2021/data.jsonl
+          - ../data/elsherief2021/users.jsonl
+          - ../data/qian2018/users.jsonl
+          - ../../data/hate_speech/elsherief2021/implicit_hate_v1_stg2_posts.tsv
+      - name: patriotfront
+        source: discord
+        domain: chat
+        load_paths:
+          - ../../data/patriotfront/2017-Vanguard_America-Patriot_Front/Discord/dump
+          - ../../data/patriotfront/2018/Discord/dump_Front_And_Center
+          - ../../data/patriotfront/2018/Discord/dump_MI_Goy_Scouts_Official
+          - ../resources/us_first_names_1990.csv
+      - name: ironmarch
+        source: ironmarch
+        domain: forum
+        load_paths:
+          - ../data/iron_march_201911/csv/core_search_index.csv
+      - name: stormfront
+        source: stormfront
+        domain: forum
+        load_paths:
+          - ../data/stormfront_archive/processed
+      - name: jokubausaite2020
+        source: 4chan
+        domain: forum
+        load_paths:
+          - ../../data/4chan/jokubausaite2020/
+      - name: papasavva2020
+        source: 4chan
+        domain: forum
+        load_paths:
+          - ../data/papasavva2020_white_supremacist_flag_posts.csv
+          - ../../data/4chan/jokubausaite2020/
+      - name: calderon2021
+        source: daily_stormer
+        domain: long-form
+        load_paths:
+          - ../data/calderon2021/d_stormer_documents.json
+      #- name: calderon2021 # all this text is present in calderon2021 daily_stormer
+      #  source: american_renaissance
+      #  domain: long-form
+      #  load_paths:
+      #    - ../data/calderon2021/amran_documents.json
+      - name: pruden2022
+        source: breivik_manifesto
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/AndersBehringBreivikManifesto.txt
+      - name: pruden2022
+        source: powell_rivers_of_blood_speech
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Enoch-Powells-Rivers-of-Blood-new-analysis-pdf.txt'
+      - name: pruden2022
+        source: raspail_camp_of_the_saints_book
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Jean-Raspail-Camp-of-the-Saints.txt'
+      - name: pruden2022
+        source: lane_white_genocide_manifesto
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Lane_White Genocide Manifesto.txt'
+      - name: pruden2022
+        source: camus_the_great_replacement_book
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
+
   white_supremacist_train_2topic:
     create: False
     label: white_supremacist
@@ -575,11 +668,11 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_2topic_ws5weight_39609_test
+  name: 3way_15topic_26404_test
   train: False
   test: True
   train_corpora: # Still needed for eval runs to get ID to label mappings
-    - name: white_supremacist_train_2topic
+    - name: white_supremacist_train_15topic
     #- name: neutral_antiracist_size
     - name: neutral_train
     - name: antiracist_train
@@ -605,4 +698,4 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     n_epochs: 8
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/3way_2topic_ws5weight/checkpoint-39609'
+    load: '../output/bert/3way_15topic/checkpoint-26404'

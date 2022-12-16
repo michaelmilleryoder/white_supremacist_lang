@@ -27,7 +27,7 @@ class WeightedLossTrainer(Trainer):
         outputs = model(**inputs)
         logits = outputs.get("logits")
         # compute custom loss (with 3 labels
-        loss_fct = nn.CrossEntropyLoss(weight=torch.Tensor([1.0, 1.0, 5.0]).cuda())
+        loss_fct = nn.CrossEntropyLoss(weight=torch.Tensor([1.0, 1.0, 3.0]).cuda())
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 
@@ -153,7 +153,7 @@ class BertClassifier:
         # TODO: Add in evaluation on external corpora, or put it in another callback sort of thing
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
-        #predictions = self.return_preds(logits)
+        #predictions = self.return_preds(logits) # for shifts
         if self.test_label_combine is not None:
             predictions = np.array([self.label2id[self.test_label_combine.get(self.id2label[pred], 
                 self.id2label[pred])] for pred in predictions])
@@ -187,9 +187,9 @@ class BertClassifier:
         white_supremacist_idx = self.label2id['white_supremacist']
 
         # Modify logits to prioritize higher precision
-        #ws_shift = -10
+        ws_shift = -0.5
         modified = logits.copy()
-        #modified[:,white_supremacist_idx] = modified[:,white_supremacist_idx] + ws_shift
+        modified[:,white_supremacist_idx] = modified[:,white_supremacist_idx] + ws_shift
         
         return np.argmax(modified, axis=-1)
         

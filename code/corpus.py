@@ -156,9 +156,9 @@ class Corpus:
         # Filter out documents with certain topics
         selected['topic'] = assigned_topics
         filtered = selected
-        if self.lda_filter['include_topics'] is not None:
+        if 'include_topics' in self.lda_filter.keys() and self.lda_filter['include_topics'] is not None:
             filtered = filtered[filtered.topic.isin(self.lda_filter['include_topics'])]
-        if self.lda_filter['exclude_topics'] is not None:
+        if 'exclude_topics' in self.lda_filter.keys() and self.lda_filter['exclude_topics'] is not None:
             filtered = filtered[~filtered.topic.isin(self.lda_filter['exclude_topics'])]
         if self.lda_filter['query'] is None:
             self.data = filtered
