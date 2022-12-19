@@ -240,6 +240,7 @@ corpora:
 
   annotated_alatawi2021_5x: # test sets human-annotated for white supremacy
     create: False
+    test_size: 0.3
     label: {1: white_supremacist, 0: neutral}
     sample:
       sample_factor: 5 # factor to multiply the sample by (for training fold if split)
@@ -252,6 +253,7 @@ corpora:
 
   annotated_siegel2021_5x: # test sets human-annotated for white supremacy
     create: False
+    test_size: 0.3
     label: {1: white_supremacist, 0: neutral}
     sample:
       sample_factor: 5 # factor to multiply the sample by (for training fold if split)
@@ -265,6 +267,7 @@ corpora:
 
   annotated_rieger2021_5x: # test sets human-annotated for white supremacy
     create: False
+    test_size: 0.3
     label: {1: white_supremacist, 0: neutral}
     sample:
       sample_factor: 5 # factor to multiply the sample by (for training fold if split)
@@ -311,7 +314,7 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_topicfiltered_annotated_rieger2021_siegel2021_5x
+  name: 3way_topicfiltered_annotated_siegel2021_5x
   train: True
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
@@ -320,14 +323,21 @@ experiment: # define experiments where train particular classifiers on particula
     - name: neutral_train
     - name: antiracist_train
     #- name: annotated_alatawi2021_5x
-    - name: annotated_rieger2021_5x
+    #  fold: train
+    #- name: annotated_rieger2021_5x
+    #  fold: train
     - name: annotated_siegel2021_5x
+      fold: train
+    #- name: annotated_5x
+    #  fold: train
     #- name: annotated_lda_5x
   test_corpora: 
-    - name: annotated_alatawi2021
+    #- name: annotated_alatawi2021
     #- name: annotated_rieger2021
     #- name: annotated_siegel2021
     #- name: annotated
+    - name: annotated_5x
+      fold: test
     - name: domain_test
     - name: bias_test
   classifier: 

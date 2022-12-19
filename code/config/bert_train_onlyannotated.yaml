@@ -75,6 +75,18 @@ corpora:
   #  create: False
   #  label: {1: white_supremacist, 0: neutral}
 
+  annotated_alatawi2021_5x_train70_singles: # created in corpus_stats.ipynb, load-only
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+
+  annotated_rieger2021_5x_train70_singles: # created in corpus_stats.ipynb, load-only
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+
+  annotated_siegel2021_5x_train70_singles: # created in corpus_stats.ipynb, load-only
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+
   annotated_lda: # my personal annotations of white supremacist corpus examples, by LDA topioc
     create: False
     label: {1: white_supremacist, 0: neutral, -1: neutral}
@@ -108,20 +120,21 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: annotated_rieger2021_siegel2021
+  name: annotated_alatawi2021_5x_singles
   train: True
   test: True
   train_corpora:
+    - name: annotated_alatawi2021_5x_train70_singles
     #- name: annotated_alatawi2021
-    - name: annotated_rieger2021
-    - name: annotated_siegel2021
-    - name: annotated_lda
-  test_corpora: 
-    - name: annotated_alatawi2021
     #- name: annotated_rieger2021
     #- name: annotated_siegel2021
-    #- name: annotated_5x
-    #  fold: test
+    #- name: annotated_lda
+  test_corpora: 
+    #- name: annotated_alatawi2021
+    #- name: annotated_rieger2021
+    #- name: annotated_siegel2021
+    - name: annotated_5x
+      fold: test
     - name: domain_test
     - name: bias_test
   classifier: 

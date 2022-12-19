@@ -106,6 +106,7 @@ class Dataset:
         # Set index first so regardless of filtering will have the same
         self.data['id'] = self.name + '_' + self.data.index.astype(str)
         self.data.set_index('id', inplace=True)
+        assert self.data.index.duplicated(keep=False).any() == False # Any duplicates indices
         #self.data = self.data[self.data['text'].str.split().str.len() >= min_word_limit]
         #with Pool(self.n_jobs) as p:
         #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=80))
@@ -649,7 +650,7 @@ class Siegel2021Dataset(Dataset):
             filtered_wn.query('white_nationalism_total == "yes"').rename(columns={'white_nationalism_total': 'white_nationalism'}),
             #hs_nodups.query('hatespeech == "no"').rename(columns={'hatespeech': 'white_nationalism'}).sample(round(n_wn*7/3)),
             hs_nodups.query('hatespeech == "no"').rename(columns={'hatespeech': 'white_nationalism'}),
-        ]).sample(frac=1)
+        ]).sample(frac=1).reset_index()
 
     def process(self):
         """ Process data for evaluating classifiers based on other datasets. """

@@ -26,7 +26,7 @@ class Corpus:
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
                     match_factor: int = 1, min_word_limit: int = 1, label = None, lda_filter: dict = None, 
-                    sample: dict = None, test_size: float = None):
+                    sample: dict = None, split: dict = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -46,8 +46,11 @@ class Corpus:
                         query: to select data, 
                         sample_n: n to sample from that queried data
                         sample_factor: factor to multiply/sample the data by
-                test_size: size (fraction) of the corpus to randomly sample as a test split.
+                split: dict of info on train/test split. None if not splitting. 
                         Training and test splits (as well as the original) will be saved out.
+                    Dict contains:
+                        test_size: size (fraction) of the corpus to randomly sample as a test split
+                        ref_dataset: split based on a prior dataset's train/test split
         """
         self.name = name
         self.base_dirpath = '../data/corpora'
@@ -94,9 +97,11 @@ class Corpus:
             self.folds['all'] = pd.concat(dfs).drop_duplicates(subset='text')
             if self.lda_filter is not None:
                 self.filter_lda()
-            if self.test_size is not None:
+            if self.split is not None:
+                if 'ref_dataset' in self.split and self.split['ref_dataset'] is not None:
+                    # TODO: Assign train/test labels based on the reference dataset
                 self.folds['train'], self.folds['test'] = train_test_split(
-                    self.folds['all'], test_size=self.test_size, random_state=9)
+                    self.folds['all'], test_size=self.split['test_size'], random_state=9)
             if self.sample_info is not None:
                 self.sample()
             # Gets complicated if both sampling/filtering and then splitting into folds happens
@@ -169,7 +174,7 @@ class Corpus:
         """ Sample particular portions of the corpus """
         for fold, data in self.folds.items():
             if fold == 'test':
-                continue # use full, unduplicated test sets
+                continue # don't sample test sets: use full, unduplicated ones
             if 'query' in self.sample_info:
                 selected = data.query(self.sample_info['query'])
             else:
