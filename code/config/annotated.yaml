@@ -1,0 +1,87 @@
+---
+# Define which datasets are in which corpora
+corpora:
+
+  annotated: # test sets human-annotated for white supremacy
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+    split:
+      test_size: 0.3
+    datasets:
+      - name: alatawi2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+      - name: siegel2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+      #- name: siegel2021_white_nationalist_only # Probably put in separate corpus to eval
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths:
+      #    - '../data/siegel2021/white_nationalist_training_data.csv'
+      #    - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  annotated_lda: # my personal annotations of white supremacist corpus examples, by LDA topioc
+    create: False
+    label: {1: white_supremacist, 0: neutral, -1: neutral}
+    datasets:
+      - name: lda_annotations
+        source: 4chan # is majority, but has a mix
+        domain: forum # is majority, but has a mix
+        load_paths:
+          - '../data/white_supremacist_annotations_30topics.csv'
+
+  domain_test: # out-of-domain evaluations
+    create: False
+    label: white_supremacist
+    datasets:
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_quotes.csv'
+          - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
+
+  bias_test:
+    create: False
+    label: neutral # possibly antiracist for positive uses of identities?
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
+
+experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
+  #name: annotated
+  name: annotated_3186_test
+  #train: True
+  train: False
+  test: True
+  train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
+    - name: annotated
+      fold: train
+    - name: annotated_lda
+  test_corpora: 
+    - name: annotated
+      fold: test
+    - name: domain_test
+    - name: bias_test
+  classifier: 
+    type: bert
+    n_epochs: 10
+    #load: Null # Null to train a new model from scratch, or a path to the model to load
+    load: '../output/bert/annotated/checkpoint-3186'
+    checkpoints: epoch

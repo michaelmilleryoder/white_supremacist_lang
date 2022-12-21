@@ -75,10 +75,15 @@ class Corpus:
                 ref_corpora=ref_corpora, match_factor=self.match_factor, min_word_limit=min_word_limit) for ds in datasets]
         self.lda_filter = lda_filter
         self.sample_info = sample
-        self.test_size = test_size
-        if self.test_size is not None:
-            self.train_suffix = f'_train{int((1-self.test_size)*100)}'
-            self.test_suffix = f'_test{int(self.test_size*100)}'
+        self.split = split
+        self.split_ref = None
+        if self.split is not None:
+            self.train_suffix = f'_train{int((1-self.split["test_size"])*100)}'
+            self.test_suffix = f'_test{int(self.split["test_size"]*100)}'
+            if 'split_ref' in self.split:
+                ref_corpus_fpath = self.base_tmp_fpath.format(self.split['split_ref'])
+                self.split_ref = self.load_corpus(ref_corpus_fpath, split=True, 
+                    train_suffix=self.train_suffix, test_suffix=self.test_suffix)
         self.folds = {}
         self.data = None
 
@@ -98,10 +103,19 @@ class Corpus:
             if self.lda_filter is not None:
                 self.filter_lda()
             if self.split is not None:
-                if 'ref_dataset' in self.split and self.split['ref_dataset'] is not None:
-                    # TODO: Assign train/test labels based on the reference dataset
-                self.folds['train'], self.folds['test'] = train_test_split(
-                    self.folds['all'], test_size=self.split['test_size'], random_state=9)
+                if 'split_ref' in self.split and self.split['split_ref'] is not None:
+                    # Assign train/test labels based on the reference dataset
+                    train = self.folds['all'][self.folds['all'].index.isin(self.split_ref['train'].index)]
+                    test = self.folds['all'][self.folds['all'].index.isin(self.split_ref['test'].index)]
+                    test_size = len(test)/(len(test) + len(train))
+                    if test_size < self.split['test_size'] - 0.1 or test_size > self.split['test_size'] + 0.1:
+                        pdb.set_trace() # reference train/test ratio is off from desired ratio
+                    else:
+                        self.folds['train'] = train
+                        self.folds['test'] = test
+                else:
+                    self.folds['train'], self.folds['test'] = train_test_split(
+                        self.folds['all'], test_size=self.split['test_size'], random_state=9)
             if self.sample_info is not None:
                 self.sample()
             # Gets complicated if both sampling/filtering and then splitting into folds happens
@@ -117,7 +131,7 @@ class Corpus:
                 load_path = self.fpath
             print(f"Loading corpus from {load_path}...")
             self.folds['all'] = self.load_corpus(load_path)
-            if self.test_size is not None:
+            if self.split is not None:
                 path = Path(load_path)
                 train_path = str(path.with_stem(str(path.stem) + self.train_suffix))
                 test_path = str(path.with_stem(str(path.stem) + self.test_suffix))
@@ -222,7 +236,7 @@ class Corpus:
         self.data.to_json(self.fpath, orient='table', indent=4)
         print(f"Saving corpus to {self.tmp_fpath}...") # for faster loading as an option
         self.data.to_pickle(self.tmp_fpath)
-        if self.test_size is not None:
+        if self.split is not None:
             path = Path(self.fpath)
             tmp_fpath = Path(self.tmp_fpath)
             train_json_path = str(path.with_stem(str(path.stem) + self.train_suffix))
@@ -235,11 +249,20 @@ class Corpus:
             self.folds['test'].to_pickle(test_pkl_path)
 
     @classmethod
-    def load_corpus(cls, path):
+    def load_corpus(cls, path, split=False, train_suffix=None, test_suffix=None):
         """ Load a corpus from disk and return it as a dataframe"""
         res = None
         if path.endswith('.json'):
             res = pd.read_json(path, orient='table')
         elif path.endswith('.pkl'):
-            res = pd.read_pickle(path)
+            if split:
+                res = {}
+                path = Path(path)
+                train_pkl_path = str(path.with_stem(str(path.stem) + train_suffix))
+                test_pkl_path = str(path.with_stem(str(path.stem) + test_suffix))
+                res['train'] = pd.read_pickle(train_pkl_path)
+                res['test'] = pd.read_pickle(test_pkl_path)
+                res['all'] = pd.read_pickle(path)
+            else:
+                res = pd.read_pickle(path)
         return res
