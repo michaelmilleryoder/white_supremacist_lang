@@ -212,10 +212,10 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_topicfiltered_annotated_alatawi2021_5x
-  #name: annotated_666_test
-  train: True
-  #train: False
+  #name: 3way_topicfiltered_annotated_alatawi2021_5x
+  name: 3way_topicfiltered_annotated_alatawi2021_5x_66210_test
+  #train: True
+  train: False
   test: True
   train_corpora:
     - name: white_supremacist_train_topicfiltered
@@ -228,9 +228,10 @@ experiment: # define experiments where train particular classifiers on particula
       fold: test
     - name: domain_test
     - name: bias_test
+  test_label_combine: {antiracist: neutral}
   classifier: 
     type: bert
     n_epochs: 10
-    load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/annotated/checkpoint-666'
+    #load: Null # Null to train a new model from scratch, or a path to the model to load
+    load: '../output/bert/3way_topicfiltered_annotated_alatawi2021_5x/checkpoint-66210'
     checkpoints: epoch
