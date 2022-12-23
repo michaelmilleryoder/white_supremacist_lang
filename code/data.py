@@ -610,16 +610,20 @@ class Alatawi2021Dataset(Dataset):
         self.uniform_format()
 
 
-class Alatawi2021_white_supremacistDataset(Dataset):
+class Alatawi2021_white_supremacistDataset(Alatawi2021Dataset):
     """ Tweets annotated for white supremacy from Alatawi+ 2021 paper 
         This dataset only keeps the tweets labeled for white supremacy
     """
     
+    def load(self):
+        """ Load, select only tweets labeled for white supremacy """
+        self.data = pd.read_csv(self.load_paths[0])
+        self.data = self.data[self.data['Voting and Final Labels']==1]
+
     def process(self):
-        """ Process data for evaluating classifiers based on other datasets. """
-        self.data['text'], self.data['word_count'] = list(zip(*self.data['input.text'].map(tokenize_lowercase)))
-        self.data['label'] = self.data['Voting and Final Labels']
-        self.uniform_format()
+        """ Remove label column """
+        super().process()
+        self.data.drop(columns='label', inplace=True)
 
 
 class Siegel2021Dataset(Dataset):
@@ -688,6 +692,11 @@ class Siegel2021_white_supremacistDataset(Siegel2021Dataset):
     def load(self):
         super().load()
         self.data = self.data.query('white_nationalism == "yes"')
+
+    def process(self):
+        """ Remove label column """
+        super().process()
+        self.data.drop(columns='label', inplace=True)
 
 
 class Adl_heatmapDataset(Dataset):
@@ -825,6 +834,10 @@ class Rieger2021_white_supremacistDataset(Rieger2021Dataset):
         super().load()
         self.data = self.data.query('white_supremacist and Source==@self.source')
 
+    def process(self):
+        """ Remove label column """
+        super().process()
+        self.data.drop(columns='label', inplace=True)
 
 class Hatecheck_identity_nonhateDataset(Dataset):
     """ Data selected from HateCheck to test lexical bias against marginalized identities """

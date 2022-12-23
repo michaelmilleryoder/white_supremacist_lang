@@ -162,6 +162,7 @@ class BertClassifier:
             if metric_name in ['precision', 'recall', 'f1']:
                 unique_labels = sorted(set(predictions.tolist() + labels.tolist()))
                 results[metric_name] = {}
+                # Get results for each class
                 for k, result in metric.compute(predictions=predictions, references=labels, average=None).items():
                     results[metric_name][k] = {}
                     if isinstance(result, float):
@@ -178,6 +179,9 @@ class BertClassifier:
                             results[metric_name][k][label] = val
                 #results[metric_name] = {k: {self.id2label[unique_labels[i]]: val for i, val in enumerate(result)} for (k, 
                 #    result) in metric.compute(predictions=predictions, references=labels, average=None).items()}
+                # Weighted results (to compare with Alatawi+2021)
+                for k, result in metric.compute(predictions=predictions, references=labels, average='weighted').items():
+                    results[metric_name][k]['weighted'] = result
             else:
                 results[metric_name] = metric.compute(predictions=predictions, references=labels)
         return results
