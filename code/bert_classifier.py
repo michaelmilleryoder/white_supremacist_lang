@@ -51,8 +51,8 @@ class MultiClassTrainer(Trainer):
 class BertClassifier:
 
     def __init__(self, exp_name: str, train=False, load=None, train_length=None, n_labels: int = 2, 
-        id2label: dict = None, label2id: dict = None, n_epochs: int = 5, checkpoints: str = 'epoch', 
-        test_label_combine: dict = None):
+        id2label: dict = None, label2id: dict = None, pretrained_model: str = 'distilbert-base-uncased', 
+        n_epochs: int = 5, checkpoints: str = 'epoch', test_label_combine: dict = None):
         """ Args:
                 exp_name: name of the experiment (for the output filename)
                 train: whether the model will be trained
@@ -62,6 +62,7 @@ class BertClassifier:
                 n_labels: number of labels to be used in classification
                 id2label: mapping of class IDs to class names
                 label2id: mapping of class names to class IDs
+                pretrained_model: Hugging Face name of the pretrained model to load and fine-tune (default distilbert-base-uncased)
                 n_epochs: number of epochs to train
                 checkpoints: whether to save at 'epoch' or 'steps', which will save a fixed number of times over training
                 test_label_combine: a dictionary of any changes of predicted labels to make 
@@ -70,10 +71,11 @@ class BertClassifier:
         self.exp_name = exp_name
         self.id2label = id2label
         self.label2id = label2id
+        self.pretrained_model = pretrained_model
         if load is None:
-            self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=n_labels,
+            self.model = AutoModelForSequenceClassification.from_pretrained(self.pretrained_model, num_labels=n_labels,
                 id2label=self.id2label, label2id=self.label2id)
-            self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+            self.tokenizer = AutoTokenizer.from_pretrained(self.pretrained_model)
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
             self.tokenizer = AutoTokenizer.from_pretrained(load)
