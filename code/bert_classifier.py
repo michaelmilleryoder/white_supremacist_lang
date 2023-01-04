@@ -14,6 +14,7 @@ import numpy as np
 import torch
 from torch import nn
 from sklearn.model_selection import GroupShuffleSplit
+import scipy
 
 from corpus import Corpus
 
@@ -85,7 +86,8 @@ class BertClassifier:
         self.metrics = {'accuracy': load_metric('accuracy'), 
                 'precision': load_metric('precision'),
                 'recall': load_metric('recall'),
-               'f1': load_metric('f1')}
+               'f1': load_metric('f1')
+            }
         self.test_label_combine = test_label_combine
         #if n_labels == 2:
         #    self.metrics = {'accuracy': load_metric('accuracy'), 
@@ -181,7 +183,7 @@ class BertClassifier:
                             results[metric_name][k][label] = val
                 #results[metric_name] = {k: {self.id2label[unique_labels[i]]: val for i, val in enumerate(result)} for (k, 
                 #    result) in metric.compute(predictions=predictions, references=labels, average=None).items()}
-                # Weighted results (to compare with Alatawi+2021)
+                # Weighted F1, prec, recall
                 for k, result in metric.compute(predictions=predictions, references=labels, average='weighted').items():
                     results[metric_name][k]['weighted'] = result
             else:
@@ -276,9 +278,12 @@ class BertClassifier:
                 result_lines.append({'dataset': dataset, 'metric': 'accuracy', 'value': res['eval_accuracy']['accuracy']})
                 pred_output = self.trainer.predict(test_tokenized)
                 preds = np.argmax(pred_output.predictions, axis=-1)
-                # Save out numeric predictions
-                #pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.txt')
-                #np.savetxt(pred_outpath, preds)
+                # Save out numeric class probability predictions
+                prob_outpath = os.path.join(self.output_dir, f'{dataset}_pred_probs.txt')
+                prob = scipy.special.softmax(pred_output.predictions, axis=-1)
+                class_prob = pd.DataFrame(prob)
+                class_prob.columns = class_prob.columns.map(self.id2label)
+                class_prob.to_json(prob_outpath, orient='records', lines=True)
                 # Save out class name predictions
                 pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.json')
                 preds_classnames = pd.Series(preds).map(self.id2label).to_json(pred_outpath)

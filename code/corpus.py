@@ -118,7 +118,6 @@ class Corpus:
                         self.folds['all'], test_size=self.split['test_size'], random_state=9)
             if self.sample_info is not None:
                 self.sample()
-            # Gets complicated if both sampling/filtering and then splitting into folds happens
             self.data = self.folds['all']
             self.print_save_stats()
             self.save()

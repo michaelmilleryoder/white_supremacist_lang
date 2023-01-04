@@ -51,7 +51,7 @@ class Experiment:
                     n_labels = n_labels,
                     id2label = id2label,
                     label2id = self.label2id,
-                    pretrained_model = classifier['pretrained_model'],
+                    pretrained_model = classifier.get('pretrained_model', 'distilbert-base-uncased'),
                     n_epochs=classifier['n_epochs'],
                     checkpoints = classifier.get('checkpoints', None),
                     test_label_combine=self.test_label_combine,
