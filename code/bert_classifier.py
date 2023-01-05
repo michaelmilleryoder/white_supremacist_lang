@@ -86,7 +86,8 @@ class BertClassifier:
         self.metrics = {'accuracy': load_metric('accuracy'), 
                 'precision': load_metric('precision'),
                 'recall': load_metric('recall'),
-               'f1': load_metric('f1')
+               'f1': load_metric('f1'),
+                'roc_auc': load_metric('roc_auc', 'multiclass')
             }
         self.test_label_combine = test_label_combine
         #if n_labels == 2:
@@ -157,10 +158,19 @@ class BertClassifier:
         # TODO: Add in evaluation on external corpora, or put it in another callback sort of thing
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
+        prob = scipy.special.softmax(logits, axis=-1)
         #predictions = self.return_preds(logits) # for shifts
         if self.test_label_combine is not None:
             predictions = np.array([self.label2id[self.test_label_combine.get(self.id2label[pred], 
                 self.id2label[pred])] for pred in predictions])
+            label_src = self.label2id[list(self.test_label_combine.keys())[0]] 
+                # which probabilities to add (assumes just one label combining)
+            label_dst = self.label2id[self.test_label_combine[self.id2label[label_src]]]
+                # which probabilities src probabilities should be added to
+            prob_combined = prob.copy()
+            prob_combined[:,label_dst] = prob_combined[:,label_src] + prob_combined[:,label_dst]
+            prob_combined[:,label_src] = 0
+            prob = prob_combined
         results = {}
         for metric_name, metric in self.metrics.items():
             if metric_name in ['precision', 'recall', 'f1']:
@@ -186,7 +196,12 @@ class BertClassifier:
                 # Weighted F1, prec, recall
                 for k, result in metric.compute(predictions=predictions, references=labels, average='weighted').items():
                     results[metric_name][k]['weighted'] = result
-            else:
+            elif metric_name == 'roc_auc':
+                results[metric_name + '_weighted'] = metric.compute(references=labels, prediction_scores=prob, 
+                    multi_class='ovr', average='weighted')
+                results[metric_name + '_macro'] = metric.compute(references=labels, prediction_scores=prob, 
+                    multi_class='ovr', average='macro')
+            else: # accuracy
                 results[metric_name] = metric.compute(predictions=predictions, references=labels)
         return results
 
