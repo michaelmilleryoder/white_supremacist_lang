@@ -87,7 +87,8 @@ class BertClassifier:
                 'precision': load_metric('precision'),
                 'recall': load_metric('recall'),
                'f1': load_metric('f1'),
-                'roc_auc': load_metric('roc_auc', 'multiclass')
+                #'roc_auc': load_metric('roc_auc', 'multiclass')
+                'roc_auc': load_metric('roc_auc')
             }
         self.test_label_combine = test_label_combine
         #if n_labels == 2:
@@ -169,7 +170,9 @@ class BertClassifier:
                 # which probabilities src probabilities should be added to
             prob_combined = prob.copy()
             prob_combined[:,label_dst] = prob_combined[:,label_src] + prob_combined[:,label_dst]
-            prob_combined[:,label_src] = 0
+            prob_combined = np.delete(prob_combined, label_src, axis=1)
+            if prob_combined.shape[1] == 2: # just keep one probability (for second axis)
+                prob_combined = prob_combined[:,-1]
             prob = prob_combined
         results = {}
         for metric_name, metric in self.metrics.items():
@@ -197,10 +200,17 @@ class BertClassifier:
                 for k, result in metric.compute(predictions=predictions, references=labels, average='weighted').items():
                     results[metric_name][k]['weighted'] = result
             elif metric_name == 'roc_auc':
-                results[metric_name + '_weighted'] = metric.compute(references=labels, prediction_scores=prob, 
-                    multi_class='ovr', average='weighted')
-                results[metric_name + '_macro'] = metric.compute(references=labels, prediction_scores=prob, 
-                    multi_class='ovr', average='macro')
+                if self.test_label_combine is not None:
+                    unique_labels = list(set(labels))
+                    transform = {old: unique_labels.index(old) for old in unique_labels}
+                    labels = np.vectorize(transform.get)(labels) # take out any removed labels
+                    if len(set(labels)) == 1: # ROC AUC isn't defined if there is only one class in true values
+                        continue
+                results[metric_name] = metric.compute(references=labels, prediction_scores=prob)
+                #results[metric_name + '_weighted'] = metric.compute(references=labels, prediction_scores=prob, 
+                #    multi_class='ovr', average='weighted')
+                #results[metric_name + '_macro'] = metric.compute(references=labels, prediction_scores=prob, 
+                #    multi_class='ovr', average='macro')
             else: # accuracy
                 results[metric_name] = metric.compute(predictions=predictions, references=labels)
         return results
