@@ -458,3 +458,18 @@
         load_paths:
           - '../data/white_supremacist_annotations_30topics.csv'
 
+  bias_test_identity_nonhate:
+    create: False
+    label: {0: neutral, 1: white_supremacist}
+    datasets:
+      - name: hatecheck_sample
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+

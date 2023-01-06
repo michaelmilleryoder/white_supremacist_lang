@@ -177,18 +177,17 @@ corpora:
 
   domain_test: # out-of-domain evaluations
     create: False
-    label: white_supremacist
+    label: {0: neutral, 1: white_supremacist}
     datasets:
       - name: adl_heatmap
         source: adl_heatmap
         domain: offline_propaganda
         load_paths:
-          - '../data/adl_heatmap/adl_quotes.csv'
-          - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
+          - '../data/adl_heatmap/adl_quotes_annotated.csv'
 
-  bias_test:
+  bias_test_identity_nonhate:
     create: False
-    label: neutral # possibly antiracist for positive uses of identities?
+    label: neutral
     datasets:
       - name: hatecheck_identity_nonhate
         source: hatecheck
@@ -199,6 +198,7 @@ corpora:
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   name: 3way_topicfiltered_53589_test30
+  #name: 3way_topicfiltered_53589_test
   train: False
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
@@ -209,7 +209,7 @@ experiment: # define experiments where train particular classifiers on particula
     - name: annotated
       fold: test
     - name: domain_test
-    - name: bias_test
+    - name: bias_test_identity_nonhate
   test_label_combine: {antiracist: neutral}
   classifier: 
     type: bert

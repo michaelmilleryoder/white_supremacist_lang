@@ -8,6 +8,7 @@
 {"dataset":"rieger2021","metric":"f1","label":"white_supremacist","value":0.2653721683}
 {"dataset":"rieger2021","metric":"f1","label":"weighted","value":0.7808793096}
 {"dataset":"rieger2021","metric":"accuracy","label":null,"value":0.7146448774}
+{"dataset":"rieger2021","metric":"roc_auc","label":null,"value":0.8121289372}
 {"dataset":"siegel2021","metric":"precision","label":"neutral","value":0.999369483}
 {"dataset":"siegel2021","metric":"precision","label":"white_supremacist","value":0.0397857689}
 {"dataset":"siegel2021","metric":"precision","label":"weighted","value":0.9817898297}
@@ -18,6 +19,7 @@
 {"dataset":"siegel2021","metric":"f1","label":"white_supremacist","value":0.0764705882}
 {"dataset":"siegel2021","metric":"f1","label":"weighted","value":0.7045020178}
 {"dataset":"siegel2021","metric":"accuracy","label":null,"value":0.5658486001}
+{"dataset":"siegel2021","metric":"roc_auc","label":null,"value":0.8970635132}
 {"dataset":"alatawi2021","metric":"precision","label":"neutral","value":0.625}
 {"dataset":"alatawi2021","metric":"precision","label":"white_supremacist","value":0.6966966967}
 {"dataset":"alatawi2021","metric":"precision","label":"weighted","value":0.6651057253}
@@ -28,6 +30,7 @@
 {"dataset":"alatawi2021","metric":"f1","label":"white_supremacist","value":0.7051671733}
 {"dataset":"alatawi2021","metric":"f1","label":"weighted","value":0.6654727173}
 {"dataset":"alatawi2021","metric":"accuracy","label":null,"value":0.6660929432}
+{"dataset":"alatawi2021","metric":"roc_auc","label":null,"value":0.7400360577}
 {"dataset":"adl_heatmap","metric":"precision","label":"neutral","value":0.0}
 {"dataset":"adl_heatmap","metric":"precision","label":"white_supremacist","value":1.0}
 {"dataset":"adl_heatmap","metric":"precision","label":"weighted","value":1.0}
@@ -41,10 +44,10 @@
 {"dataset":"hatecheck_identity_nonhate","metric":"precision","label":"neutral","value":1.0}
 {"dataset":"hatecheck_identity_nonhate","metric":"precision","label":"white_supremacist","value":0.0}
 {"dataset":"hatecheck_identity_nonhate","metric":"precision","label":"weighted","value":1.0}
-{"dataset":"hatecheck_identity_nonhate","metric":"recall","label":"neutral","value":0.332187858}
+{"dataset":"hatecheck_identity_nonhate","metric":"recall","label":"neutral","value":0.3372703412}
 {"dataset":"hatecheck_identity_nonhate","metric":"recall","label":"white_supremacist","value":0.0}
-{"dataset":"hatecheck_identity_nonhate","metric":"recall","label":"weighted","value":0.332187858}
-{"dataset":"hatecheck_identity_nonhate","metric":"f1","label":"neutral","value":0.4987102322}
+{"dataset":"hatecheck_identity_nonhate","metric":"recall","label":"weighted","value":0.3372703412}
+{"dataset":"hatecheck_identity_nonhate","metric":"f1","label":"neutral","value":0.5044160942}
 {"dataset":"hatecheck_identity_nonhate","metric":"f1","label":"white_supremacist","value":0.0}
-{"dataset":"hatecheck_identity_nonhate","metric":"f1","label":"weighted","value":0.4987102322}
-{"dataset":"hatecheck_identity_nonhate","metric":"accuracy","label":null,"value":0.332187858}
+{"dataset":"hatecheck_identity_nonhate","metric":"f1","label":"weighted","value":0.5044160942}
+{"dataset":"hatecheck_identity_nonhate","metric":"accuracy","label":null,"value":0.3372703412}

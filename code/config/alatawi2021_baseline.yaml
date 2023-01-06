@@ -56,9 +56,9 @@ corpora:
           - '../data/adl_heatmap/adl_quotes.csv'
           - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
 
-  bias_test:
+  bias_test_identity_nonhate:
     create: False
-    label: neutral # possibly antiracist for positive uses of identities?
+    label: neutral
     datasets:
       - name: hatecheck_identity_nonhate
         source: hatecheck
@@ -69,9 +69,8 @@ corpora:
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   name: alatawi2021_baseline
-  #name: annotated_alatawi2021_120_test
-  train: True
-  #train: False
+  #train: True
+  train: False
   test: True
   train_corpora:
     - name: annotated_alatawi2021
@@ -80,11 +79,11 @@ experiment: # define experiments where train particular classifiers on particula
     - name: annotated
       fold: test
     - name: domain_test
-    - name: bias_test
+    - name: bias_test_identity_nonhate
   classifier: 
     type: bert
     pretrained_model: 'bert-base-uncased'
     n_epochs: 3
-    load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/annotated_alatawi2021/checkpoint-120'
+    #load: Null # Null to train a new model from scratch, or a path to the model to load
+    load: '../output/bert/alatawi2021_baseline/'
     checkpoints: epoch

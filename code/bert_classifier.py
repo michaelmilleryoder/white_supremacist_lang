@@ -171,9 +171,10 @@ class BertClassifier:
             prob_combined = prob.copy()
             prob_combined[:,label_dst] = prob_combined[:,label_src] + prob_combined[:,label_dst]
             prob_combined = np.delete(prob_combined, label_src, axis=1)
-            if prob_combined.shape[1] == 2: # just keep one probability (for second axis)
-                prob_combined = prob_combined[:,-1]
             prob = prob_combined
+        if prob.shape[1] == 2: # just keep one probability (for white supremacist positive class)
+            assert max(self.label2id.values()) == self.label2id['white_supremacist'] # white supremacist is last column
+            prob = prob[:,-1]
         results = {}
         for metric_name, metric in self.metrics.items():
             if metric_name in ['precision', 'recall', 'f1']:
@@ -204,8 +205,8 @@ class BertClassifier:
                     unique_labels = list(set(labels))
                     transform = {old: unique_labels.index(old) for old in unique_labels}
                     labels = np.vectorize(transform.get)(labels) # take out any removed labels
-                    if len(set(labels)) == 1: # ROC AUC isn't defined if there is only one class in true values
-                        continue
+                if len(set(labels)) == 1: # ROC AUC isn't defined if there is only one class in true values
+                    continue
                 results[metric_name] = metric.compute(references=labels, prediction_scores=prob)
                 #results[metric_name + '_weighted'] = metric.compute(references=labels, prediction_scores=prob, 
                 #    multi_class='ovr', average='weighted')
@@ -301,6 +302,8 @@ class BertClassifier:
                         }
                         result_lines.append(result_line)
                 result_lines.append({'dataset': dataset, 'metric': 'accuracy', 'value': res['eval_accuracy']['accuracy']})
+                if 'eval_roc_auc' in res.keys():
+                    result_lines.append({'dataset': dataset, 'metric': 'roc_auc', 'value': res['eval_roc_auc']['roc_auc']})
                 pred_output = self.trainer.predict(test_tokenized)
                 preds = np.argmax(pred_output.predictions, axis=-1)
                 # Save out numeric class probability predictions

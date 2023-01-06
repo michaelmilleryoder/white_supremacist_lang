@@ -703,8 +703,11 @@ class Adl_heatmapDataset(Dataset):
     """ Offline propaganda from ADL HEATMap dataset """
 
     def load(self):
+        # Load annotated unique quotes
+        self.data = pd.read_csv(self.load_paths[0])
+
         # Load quotes from white supremacist groups (already extracted from event descriptions)
-        self.data = pd.read_json(self.load_paths[0], orient='table').reset_index(drop=True)
+        #self.data = pd.read_json(self.load_paths[0], orient='table').reset_index(drop=True)
 
         #quotes = pd.read_csv(self.load_paths[0])
         #quotes['timestamp'] = pd.to_datetime(quotes.date, format='%m/%d/%y', errors='coerce', utc=True).fillna(
@@ -721,8 +724,11 @@ class Adl_heatmapDataset(Dataset):
         #self.data = self.data.drop_duplicates(subset='quote').reset_index(drop=True)
 
     def process(self):
-        self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].map(tokenize_lowercase)))
-        #self.data['label'] = 1 # all labeled as white supremacist
+        self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].str.slice(1,-1).map(tokenize_lowercase)))
+        self.data['length'] = self.data.text.str.len()
+        self.data = self.data[self.data.length>1]
+        self.data = self.data[self.data.text != "\n "]
+        self.data['label'] = self.data['Michael'].fillna(self.data['Annotation (propaganda or Not)'])
         self.uniform_format()
 
 
@@ -839,21 +845,56 @@ class Rieger2021_white_supremacistDataset(Rieger2021Dataset):
         super().process()
         self.data.drop(columns='label', inplace=True)
 
+
 class Hatecheck_identity_nonhateDataset(Dataset):
     """ Data selected from HateCheck to test lexical bias against marginalized identities """
 
     def load(self):
         self.data = pd.read_csv(self.load_paths[0], index_col=0)
+        selected_identities = ['trans people', 'gay people', 'women',
+                        'black people', 'Muslims', 'immigrants']
         selected_cols = ['ident_neutral_nh', 'ident_pos_nh', 
                         'slur_homonym_nh', 'slur_reclaimed_nh',
                         'negate_neg_nh',
                         'counter_quote_nh', 'counter_ref_nh',
                         ]
-        self.data = self.data.query('functionality==@selected_cols')
+        self.data = self.data.query('target_ident==@selected_identities and functionality==@selected_cols')
 
     def process(self):
         self.data['text'], self.data['word_count'] = list(zip(*self.data.test_case.map(tokenize_lowercase)))
         self.data['label'] = 0
+        self.uniform_format()
+
+
+class Hatecheck_sampleDataset(Dataset):
+    """ Data selected from HateCheck:
+        * hate: that fits a white supremacist ideology
+        * nonhate: to test lexical bias against marginalized identities 
+    """
+
+    def load(self):
+        self.data = pd.read_csv(self.load_paths[0], index_col=0)
+        selected_identities = ['trans people', 'gay people', 'women',
+                        'black people', 'Muslims', 'immigrants']
+        selected_cols = [
+                        # Hate
+                        'derog_neg_emote_h', 'derog_neg_attrib_h', 'derog_dehum_h',
+                        'derog_impl_h', 'threat_dir_h', 'threat_norm_h', 'slur_h',
+                        'refs_subs_clause_h', 'refs_subs_sent_h', 'negate_pos_h',
+                        'phrase_question_h', 'phrase_opinion_h', 
+                        'spell_char_swap_h', 'spell_char_del_h', 'spell_space_del_h', 'spell_space_add_h', 'spell_leet_h',
+
+                        # Non-hate
+                        'ident_neutral_nh', 'ident_pos_nh', 
+                        'slur_homonym_nh', 'slur_reclaimed_nh',
+                        'negate_neg_nh',
+                        'counter_quote_nh', 'counter_ref_nh',
+                        ]
+        self.data = self.data.query('target_ident==@selected_identities and functionality==@selected_cols')
+
+    def process(self):
+        self.data['text'], self.data['word_count'] = list(zip(*self.data.test_case.map(tokenize_lowercase)))
+        self.data['label'] = self.data.label_gold.map({'hateful': 1, 'non-hateful': 0})
         self.uniform_format()
 
 
