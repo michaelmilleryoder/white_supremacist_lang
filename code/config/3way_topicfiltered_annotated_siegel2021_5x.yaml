@@ -192,14 +192,13 @@ corpora:
 
   domain_test: # out-of-domain evaluations
     create: False
-    label: white_supremacist
+    label: {0: neutral, 1: white_supremacist}
     datasets:
       - name: adl_heatmap
         source: adl_heatmap
         domain: offline_propaganda
         load_paths:
-          - '../data/adl_heatmap/adl_quotes.csv'
-          - '../data/adl_heatmap/adl_heatmap_2022-10-27.csv'
+          - '../data/adl_heatmap/adl_quotes_annotated.csv'
 
   bias_test:
     create: False
