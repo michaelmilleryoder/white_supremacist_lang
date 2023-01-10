@@ -1,0 +1,249 @@
+---
+# Define which datasets are in which corpora
+corpora:
+
+  white_supremacist_train_15topic:
+    create: False
+    label: white_supremacist
+    min_word_limit: 10
+    lda_filter: # remove posts that match certain topics in a trained LDA model. Put Null if not using
+      #query: 'domain=="forum"'
+      query: Null
+      model: '../models/white_supremacist_fulltext_lda30.pkl'
+      vectorizer: '../models/white_supremacist_fulltext_countvectorizer.pkl'
+      include_topics: [13,28,25,6,15,9,8,21,19,16,23,2,14,29,4]
+      exclude_topics: Null
+    sample: # Put Null if not using
+      query: 'domain=="forum"' # query to select data
+      sample_n: 100000 # n to sample from that queried data 
+    datasets:  # any unique name, source, or domain is its own
+      - name: qian2018
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/qian2018/data.jsonl
+      - name: elsherief2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/elsherief2021/data.jsonl
+          - ../data/elsherief2021/users.jsonl
+          - ../data/qian2018/users.jsonl
+          - ../../data/hate_speech/elsherief2021/implicit_hate_v1_stg2_posts.tsv
+      - name: patriotfront
+        source: discord
+        domain: chat
+        load_paths:
+          - ../../data/patriotfront/2017-Vanguard_America-Patriot_Front/Discord/dump
+          - ../../data/patriotfront/2018/Discord/dump_Front_And_Center
+          - ../../data/patriotfront/2018/Discord/dump_MI_Goy_Scouts_Official
+          - ../resources/us_first_names_1990.csv
+      - name: ironmarch
+        source: ironmarch
+        domain: forum
+        load_paths:
+          - ../data/iron_march_201911/csv/core_search_index.csv
+      - name: stormfront
+        source: stormfront
+        domain: forum
+        load_paths:
+          - ../data/stormfront_archive/processed
+      - name: jokubausaite2020
+        source: 4chan
+        domain: forum
+        load_paths:
+          - ../../data/4chan/jokubausaite2020/
+      - name: papasavva2020
+        source: 4chan
+        domain: forum
+        load_paths:
+          - ../data/papasavva2020_white_supremacist_flag_posts.csv
+          - ../../data/4chan/jokubausaite2020/
+      - name: calderon2021
+        source: daily_stormer
+        domain: long-form
+        load_paths:
+          - ../data/calderon2021/d_stormer_documents.json
+      #- name: calderon2021 # all this text is present in calderon2021 daily_stormer
+      #  source: american_renaissance
+      #  domain: long-form
+      #  load_paths:
+      #    - ../data/calderon2021/amran_documents.json
+      - name: pruden2022
+        source: breivik_manifesto
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/AndersBehringBreivikManifesto.txt
+      - name: pruden2022
+        source: powell_rivers_of_blood_speech
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Enoch-Powells-Rivers-of-Blood-new-analysis-pdf.txt'
+      - name: pruden2022
+        source: raspail_camp_of_the_saints_book
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Jean-Raspail-Camp-of-the-Saints.txt'
+      - name: pruden2022
+        source: lane_white_genocide_manifesto
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Lane_White Genocide Manifesto.txt'
+      - name: pruden2022
+        source: camus_the_great_replacement_book
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
+
+  neutral_train:
+    create: False
+    label: neutral
+    min_word_limit: 1
+    datasets:
+      - name: twitter_match
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '../data/neutral/twitter/'
+      - name: discord_match
+        source: discord
+        domain: chat
+        load_paths: 
+          - '../../data/discord/v3/content/drive/Shareddrives/Datasets/cleaned-v4/discord-v3'
+      - name: reddit_match
+        source: reddit
+        domain: forum
+        load_paths: 
+          - '../data/neutral/reddit_comments'
+      - name: news_match
+        source: news
+        domain: long-form
+        load_paths: 
+          - '../../data/news/now2010-2021/text'
+    ref_corpora: 
+      - 'white_supremacist_train'
+
+  antiracist_train:
+    create: False
+    label: neutral
+    min_word_limit: 1
+    datasets:
+      - name: reddit_antiracist
+        source: reddit
+        domain: forum
+        load_paths: 
+          - '../data/antiracist/reddit_comments'
+      - name: twitter_antiracist
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '../data/antiracist/twitter/'
+      - name: medium_antiracist
+        source: medium
+        domain: long-form
+        load_paths: 
+          - '../data/antiracist/medium'
+    ref_corpora: 
+      - 'white_supremacist_train'
+      - 'neutral_train'
+
+  annotated_rieger2021_5x:
+    create: False
+    split:
+      test_size: 0.3
+    label: {1: white_supremacist, 0: neutral}
+    sample:
+      sample_factor: 5 # factor to multiply the sample by (for training fold if split)
+    datasets:
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  annotated_lda_5x: # my personal annotations of white supremacist corpus examples, by LDA topioc
+    create: False
+    label: {1: white_supremacist, 0: neutral, -1: neutral}
+    sample:
+      sample_factor: 5
+    datasets:
+      - name: lda_annotations
+        source: 4chan # is majority, but has a mix
+        domain: forum # is majority, but has a mix
+        load_paths:
+          - '../data/white_supremacist_annotations_30topics.csv'
+
+  annotated: # test sets human-annotated for white supremacy
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+    split:
+      test_size: 0.3
+    datasets:
+      - name: alatawi2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+      - name: siegel2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+      #- name: siegel2021_white_nationalist_only # Probably put in separate corpus to eval
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths:
+      #    - '../data/siegel2021/white_nationalist_training_data.csv'
+      #    - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  domain_test: # out-of-domain evaluations
+    create: False
+    label: {0: neutral, 1: white_supremacist}
+    datasets:
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_quotes_annotated.csv'
+
+  bias_test_identity_nonhate:
+    create: False
+    label: neutral
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
+
+experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
+  name: 15topic_rieger2021_5x
+  train: True
+  test: True
+  train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
+    - name: white_supremacist_train_15topic
+    - name: neutral_train
+    - name: antiracist_train
+    - name: annotated_rieger2021_5x
+      fold: train
+    - name: annotated_lda_5x
+  test_corpora: 
+    - name: annotated
+      fold: test
+    - name: domain_test
+    - name: bias_test_identity_nonhate
+  classifier: 
+    type: bert
+    n_epochs: 8
+    load: Null # Null to train a new model from scratch, or a path to the model to load
+    #load: '../output/bert/3way_topicfiltered_annotated_5x/checkpoint-27084'
+    checkpoints: epoch

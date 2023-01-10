@@ -197,8 +197,8 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_topicfiltered_53589_test30
-  #name: 3way_topicfiltered_53589_test
+  #name: 3way_topicfiltered_53589_test30
+  name: 3way_topicfiltered_53589_test
   train: False
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
@@ -207,7 +207,7 @@ experiment: # define experiments where train particular classifiers on particula
     - name: antiracist_train
   test_corpora: 
     - name: annotated
-      fold: test
+      #fold: test
     - name: domain_test
     - name: bias_test_identity_nonhate
   test_label_combine: {antiracist: neutral}
