@@ -214,7 +214,7 @@ experiment: # define experiments where train particular classifiers on particula
   classifier: 
     type: bert
     pretrained_model: 'distilbert-base-uncased'
-    n_epochs: 8
+    n_epochs: 6
     load: Null # Null to train a new model from scratch, or a path to the model to load
     #load: '../output/bert/3way_topicfiltered/checkpoint-53589'
     checkpoints: epoch

@@ -133,15 +133,17 @@ class Dataset:
         """ Print statistics on number of posts and word count per year compared to the reference corpus
         """
 
+        ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
+
         # Comparison to matching white supremacist data
         print('\t\tMatching white supremacist corpus #posts: '
-                f'{len(self.ref_corpora["white_supremacist_train"])}')
+                f'{len(self.ref_corpora[ws_match])}')
         print(f'\t\t{self.name} #posts: {len(self.data)}')
         print('\t\tMatching white supremacist corpus word count mean: '
-                f'{self.ref_corpora["white_supremacist_train"].word_count.mean()}')
+                f'{self.ref_corpora[ws_match].word_count.mean()}')
         print(f'\t\t{self.name} word count mean: {self.data.word_count.mean()}')
         print('\t\tMatching white supremacist corpus word count sum: '
-                f'{self.ref_corpora["white_supremacist_train"].word_count.sum()}')
+                f'{self.ref_corpora[ws_match].word_count.sum()}')
         print(f'\t\t{self.name} word count sum: {self.data.word_count.sum()}')
 
 
@@ -458,8 +460,9 @@ class Reddit_matchDataset(RawReddit):
         nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         self.data['timestamp'] = pd.to_datetime(self.data['created_utc'], unit='s', utc=True)
         self.data.reset_index(drop=True, inplace=True)
+        ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
         self.data = self.data.groupby(self.data.timestamp.dt.year).apply(lambda group: group.sample(
-            int(self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * 2 * self.match_factor),
+            int(self.lookup[ws_match][('post_count', 'count')][group.name] * 2 * self.match_factor),
             random_state=9)).reset_index(drop=True)
                 # double sample to meet white supremacist forum data length
         zipped = zip(self.data.body, itertools.repeat(nlp))
@@ -506,8 +509,9 @@ class Discord_matchDataset(Dataset):
         tokenizer = TweetTokenizer(strip_handles=True)
 
         # Iteratively sample and process, until match the word count of white supremacist matching chat data
-        ws_word_count = int(self.ref_corpora['white_supremacist_train'].word_count.sum() * self.match_factor)
-        ws_len = len(self.ref_corpora['white_supremacist_train'])
+        ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
+        ws_word_count = int(self.ref_corpora[ws_match].word_count.sum() * self.match_factor)
+        ws_len = len(self.ref_corpora[ws_match])
         sampled_words = 0
         sampled = []
         pbar = tqdm(total=int(ws_word_count*1.3), ncols=80) # sometimes progress bar goes over
@@ -523,7 +527,7 @@ class Discord_matchDataset(Dataset):
             sampled_words += sample_words
             sampled.append(filtered)
             pbar.update(sample_words)
-        self.data = pd.concat(sampled).drop_duplicates()
+        self.data = pd.concat(sampled).drop_duplicates().reset_index()
         self.uniform_format()
 
 
@@ -548,10 +552,11 @@ class News_matchDataset(Dataset):
         """
         # Sample specific number of articles by year
         # don't bother about word count since it will be similar once it's truncated with BERT to 512 tokens
-        match = self.data[self.data.year.isin(self.lookup['white_supremacist_train'].index)]
+        ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
+        match = self.data[self.data.year.isin(self.lookup[ws_match].index)]
         self.data = match
         self.data = match.groupby(match.year).apply(lambda group: group.sample(
-                int(self.lookup['white_supremacist_train'].loc[group.name, ('post_count', 'count')]*self.match_factor),
+                int(self.lookup[ws_match].loc[group.name, ('post_count', 'count')]*self.match_factor),
                 random_state=9)).reset_index(drop = True)
 
         # Process data
@@ -578,8 +583,9 @@ class Twitter_matchDataset(RawTwitter):
             match an older white supremacist corpus """
         self.data.reset_index(drop=True, inplace=True)
         self.data['created_at'] = pd.to_datetime(self.data['created_at'])
+        ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
         self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
-            int(self.lookup['white_supremacist_train'][('post_count', 'count')][group.name] * self.match_factor),
+            min(int(self.lookup[ws_match][('post_count', 'count')][group.name] * self.match_factor), len(group)),
             random_state=9
             )).reset_index(drop=True)
         super().process()
@@ -594,8 +600,9 @@ class Twitter_antiracistDataset(Twitter_matchDataset):
         """
         self.data['created_at'] = pd.to_datetime(self.data['created_at'])
         self.data = self.data[self.data.created_at.dt.year.isin(self.lookup['white_supremacist_train'].index)]
+        ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
         self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
-                self.lookup['white_supremacist_train'][('post_count', 'count')][group.name], random_state=9)
+                self.lookup[ws_match][('post_count', 'count')][group.name], random_state=9)
                 ).reset_index(drop=True)
         super().process()
 

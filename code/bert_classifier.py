@@ -73,7 +73,8 @@ class BertClassifier:
         self.id2label = id2label
         self.label2id = label2id
         self.pretrained_model = pretrained_model
-        if load is None:
+        self.load = load
+        if self.load is None:
             self.model = AutoModelForSequenceClassification.from_pretrained(self.pretrained_model, num_labels=n_labels,
                 id2label=self.id2label, label2id=self.label2id)
             self.tokenizer = AutoTokenizer.from_pretrained(self.pretrained_model)
@@ -247,7 +248,10 @@ class BertClassifier:
             compute_metrics = self.compute_metrics,
         )
         print('Training model...')
-        res = self.trainer.train()
+        if self.load is None:
+            res = self.trainer.train()
+        else:
+            res = self.trainer.train(self.load)
         self.trainer.save_model() # I assume saves to the output dir
         self.trainer.save_metrics('all', res.metrics)
 
