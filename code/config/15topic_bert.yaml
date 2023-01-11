@@ -200,7 +200,7 @@ corpora:
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   #name: 15topic_bert
-  name: 15topic_bert_13200_test30
+  name: 15topic_bert_26400_test30
   #train: True
   train: False
   test: True
@@ -218,5 +218,5 @@ experiment: # define experiments where train particular classifiers on particula
     pretrained_model: 'bert-base-uncased'
     n_epochs: 6
     #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/15topic_bert/checkpoint-13200'
+    load: '../output/bert/15topic_bert/checkpoint-26400'
     checkpoints: epoch

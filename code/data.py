@@ -168,7 +168,7 @@ class RawTwitter(Dataset):
 class Qian2018Dataset(RawTwitter):
 
     def load(self):
-        """ Load tweets """
+        """ Load tweets. Rehydrated based on tweet IDs of particular ideologies in ws_data_datasets.ipynb """
         with open(self.load_paths[0], 'r') as f:
             self.data = pd.json_normalize([json.loads(tweet) for tweet in f.read().splitlines()])
 
@@ -349,7 +349,7 @@ class Jokubausaite2020Dataset(Dataset):
 class Papasavva2020Dataset(Dataset):
 
     def load(self):
-        """ Load dataset """
+        """ Load dataset, created in ws_data_datasets.ipynb """
         self.data = pd.read_csv(self.load_paths[0],index_col=0, low_memory=False).reset_index(drop=True)
 
     def process(self):
