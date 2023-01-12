@@ -373,7 +373,7 @@ corpora:
         load_paths:
           - '../data/adl_heatmap/adl_quotes_annotated.csv'
 
-  bias_test:
+  bias_test_identity_nonhate:
     create: False
     label: neutral # possibly antiracist for positive uses of identities?
     datasets:
@@ -385,7 +385,8 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_2topic_23877_test30
+  name: 3way_2topic_23877_test
+  #name: 3way_2topic_23877_test30
   train: False
   test: True
   train_corpora: # Still needed for eval runs to get ID to label mappings
@@ -394,9 +395,9 @@ experiment: # define experiments where train particular classifiers on particula
     - name: antiracist_train
   test_corpora: 
     - name: annotated
-      fold: test
+      #fold: test
     - name: domain_test
-    - name: bias_test
+    - name: bias_test_identity_nonhate
   test_label_combine: {antiracist: neutral}
   classifier: 
     type: bert

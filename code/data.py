@@ -447,7 +447,7 @@ class RawReddit(Dataset):
             sub = pd.read_json(fpath, orient='table')
             subreddit = fname.split('_')[0]
             dfs.append(sub.assign(subreddit=subreddit.lower()))
-        self.data = pd.concat(dfs)
+        self.data = pd.concat(dfs).reset_index(drop=True)
 
 
 class Reddit_matchDataset(RawReddit):
@@ -479,7 +479,7 @@ class Reddit_antiracistDataset(RawReddit):
 
     def process(self):
         """ Sample data to match forum data in white supremacist data by year (random across subreddits).
-            Process data for combining with other datasets in neutral corpus.
+            Process data for combining with other datasets in antiracist corpus.
         """
         nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         zipped = zip(self.data.body, itertools.repeat(nlp))
@@ -599,8 +599,8 @@ class Twitter_antiracistDataset(Twitter_matchDataset):
             Process data for combining with other datasets in neutral corpus.
         """
         self.data['created_at'] = pd.to_datetime(self.data['created_at'])
-        self.data = self.data[self.data.created_at.dt.year.isin(self.lookup['white_supremacist_train'].index)]
         ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
+        self.data = self.data[self.data.created_at.dt.year.isin(self.lookup[ws_match].index)]
         self.data = self.data.groupby(self.data.created_at.dt.year).apply(lambda group: group.sample(
                 self.lookup[ws_match][('post_count', 'count')][group.name], random_state=9)
                 ).reset_index(drop=True)
@@ -914,14 +914,15 @@ class Medium_antiracistDataset(Dataset):
             tag = re.split(r'_articles\d?\.', fname)[0]
             fpath = os.path.join(self.load_paths[0], fname)
             dfs.append(pd.read_json(fpath, orient='records', lines=True).assign(tag=tag))
-        data = pd.concat(dfs)
+        data = pd.concat(dfs).reset_index(drop=True)
 
         # Filter out empty articles
         self.data = data[data.title != data.text]
 
     def process(self):
         """ Sample data to match the number of long-form articles in the white supremacist corpus """
-        self.data = self.data.sample(len(self.ref_corpora['white_supremacist_train']), random_state=9)
+        ws_match = [key for key in self.lookup.keys() if 'white_supremacist' in key][0]
+        self.data = self.data.sample(len(self.ref_corpora[ws_match]), random_state=9)
 
         # Process
         self.data['text'], self.data['word_count'] = list(zip(*tqdm(self.data['text'].map(tokenize_lowercase), ncols=80)))

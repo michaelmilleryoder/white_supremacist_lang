@@ -199,10 +199,10 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 6topic
-  #name: 15topic_distilbert_39600_test
-  train: True
-  #train: False
+  #name: 6topic
+  name: 6topic_26396_test
+  #train: True
+  train: False
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
     - name: white_supremacist_train_6topic
@@ -217,6 +217,6 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     pretrained_model: 'distilbert-base-uncased'
     n_epochs: 6
-    load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/15topic_distilbert/checkpoint-39600'
+    #load: Null # Null to train a new model from scratch, or a path to the model to load
+    load: '../output/bert/6topic/checkpoint-26396'
     checkpoints: epoch
