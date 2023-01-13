@@ -208,7 +208,10 @@ class BertClassifier:
                     labels = np.vectorize(transform.get)(labels) # take out any removed labels
                 if len(set(labels)) == 1: # ROC AUC isn't defined if there is only one class in true values
                     continue
-                results[metric_name] = metric.compute(references=labels, prediction_scores=prob)
+                elif len(set(labels)) == 2:
+                    results[metric_name] = metric.compute(references=labels, prediction_scores=prob)
+                else: # len(set(labels)) > 2:
+                    results[metric_name] = metric.compute(references=labels, prediction_scores=prob, multi_class='ovr')
                 #results[metric_name + '_weighted'] = metric.compute(references=labels, prediction_scores=prob, 
                 #    multi_class='ovr', average='weighted')
                 #results[metric_name + '_macro'] = metric.compute(references=labels, prediction_scores=prob, 

@@ -109,7 +109,7 @@ class Dataset:
         assert self.data.index.duplicated(keep=False).any() == False # Any duplicates indices
         #self.data = self.data[self.data['text'].str.split().str.len() >= min_word_limit]
         #with Pool(self.n_jobs) as p:
-        #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=80))
+        #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=60))
         self.data = self.data[self.data['word_count'] >= self.min_word_limit]
         self.data.drop_duplicates(subset='text', keep='first', inplace=True)
         if timestamp_col is not None:
@@ -157,7 +157,7 @@ class RawTwitter(Dataset):
         self.data['processed_text'], self.data['word_count'] = list(zip(*[process_tweet(
             text, user_mentions, urls, tokenizer) for text, user_mentions, urls in tqdm(zip(
             self.data['text'], self.data['entities.mentions'], self.data['entities.urls']), 
-            total=len(self.data), ncols=80)]))
+            total=len(self.data), ncols=60)]))
         self.data = self.data[~self.data.processed_text.str.contains(
             "account is temporarily unavailable because it violates the twitter media policy")]
         self.data.drop(columns='text', inplace=True)
@@ -249,7 +249,7 @@ class IronmarchDataset(Dataset):
         """ Process data into a format to combine with other datasets """
         with Pool(self.n_jobs) as p:
             self.data['processed'], self.data['word_count'] = list(zip(*tqdm(p.imap(
-                    tokenize_lowercase, self.data['index_content']), total=len(self.data), ncols=80)))
+                    tokenize_lowercase, self.data['index_content']), total=len(self.data), ncols=60)))
         self.data.reset_index(drop=True, inplace=True)
         self.data.rename(columns={'processed': 'text'}, inplace=True)
         self.uniform_format(timestamp_col='index_date_created', unit='s')
@@ -298,9 +298,9 @@ class StormfrontDataset(Dataset):
         zipped = zip(self.data.text, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(self.preprocess, self.data['text']), 
-            #    total=len(self.data), ncols=80)))
+            #    total=len(self.data), ncols=60)))
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(self.preprocess, tqdm(zipped, 
-                total=len(self.data), ncols=80))))
+                total=len(self.data), ncols=60))))
         self.data.reset_index(drop=True, inplace=True)
         self.uniform_format(timestamp_col='timestamp', errors='coerce')
 
@@ -340,9 +340,9 @@ class Jokubausaite2020Dataset(Dataset):
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
-            #    total=len(self.data), ncols=80)))
+            #    total=len(self.data), ncols=60)))
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_4chan, tqdm(zipped, 
-                    total=len(self.data), ncols=80))))
+                    total=len(self.data), ncols=60))))
         self.uniform_format(timestamp_col='timestamp')
 
 
@@ -379,9 +379,9 @@ class Papasavva2020Dataset(Dataset):
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(process_4chan, self.data.body), 
-            #        total=len(self.data), ncols=80)))
+            #        total=len(self.data), ncols=60)))
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_4chan, tqdm(zipped, 
-                    total=len(self.data), ncols=80))))
+                    total=len(self.data), ncols=60))))
         self.uniform_format(timestamp_col='time', unit='s')
 
 
@@ -399,9 +399,9 @@ class Calderon2021Dataset(Dataset):
         zipped = zip(self.data['title'] + ' ' + self.data['author_wording'], itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
-            #        process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data), ncols=80)))
+            #        process_article, self.data['title'] + ' ' + self.data['author_wording']), total=len(self.data), ncols=60)))
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_article, 
-                tqdm(zipped, total=len(self.data), ncols=80))))
+                tqdm(zipped, total=len(self.data), ncols=60))))
         # remove date errors. Could extract real date by parsing text
         self.data.loc[~self.data.date.str.startswith('20'), 'date'] = '' 
         self.data = self.data.drop(columns=['author_wording', 'title'])
@@ -430,7 +430,7 @@ class Pruden2022Dataset(Dataset):
 
     def process(self): 
         """ Process data into a format to combine with other datasets """
-        self.data['text'], self.data['word_count'] = list(zip(*map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data), ncols=80))))
+        self.data['text'], self.data['word_count'] = list(zip(*map(tokenize_lowercase, tqdm(self.data['orig_text'], total=len(self.data), ncols=60))))
         self.uniform_format(timestamp_col='year', format='%Y')
 
 
@@ -441,7 +441,7 @@ class RawReddit(Dataset):
         """ Load prescraped Reddit data (from get_reddit.py) """
         fpaths = sorted([fname for fname in os.listdir(self.load_paths[0]) if fname.endswith('.json')])
         dfs = []
-        for fname in tqdm(fpaths, ncols=80):
+        for fname in tqdm(fpaths, ncols=60):
             # print(fname)
             fpath = os.path.join(self.load_paths[0], fname)
             sub = pd.read_json(fpath, orient='table')
@@ -468,9 +468,9 @@ class Reddit_matchDataset(RawReddit):
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             #self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
-            #        process_reddit, self.data['body']), total=len(self.data), ncols=80)))
+            #        process_reddit, self.data['body']), total=len(self.data), ncols=60)))
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_reddit, 
-                tqdm(zipped, total=len(self.data), ncols=80))))
+                tqdm(zipped, total=len(self.data), ncols=60))))
         self.uniform_format()
 
 
@@ -485,7 +485,7 @@ class Reddit_antiracistDataset(RawReddit):
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
             self.data['text'], self.data['word_count'] = list(zip(*p.starmap(process_reddit, 
-                tqdm(zipped, total=len(self.data), ncols=80))))
+                tqdm(zipped, total=len(self.data), ncols=60))))
         self.uniform_format(timestamp_col='created_utc')
 
 
@@ -496,7 +496,7 @@ class Discord_matchDataset(Dataset):
         """ Load Discord random dataset """
         fpaths = [os.path.join(self.load_paths[0], fname) for fname in os.listdir(self.load_paths[0]) if fname.endswith('.txt')]
         dfs = []
-        for fpath in tqdm(fpaths, ncols=80):
+        for fpath in tqdm(fpaths, ncols=60):
             with open(fpath) as f:
                 dfs.append(pd.DataFrame({'message': [message for line in f.read().splitlines() for message in line.split('\t')]}))
         self.data = pd.concat(dfs)
@@ -514,7 +514,7 @@ class Discord_matchDataset(Dataset):
         ws_len = len(self.ref_corpora[ws_match])
         sampled_words = 0
         sampled = []
-        pbar = tqdm(total=int(ws_word_count*1.3), ncols=80) # sometimes progress bar goes over
+        pbar = tqdm(total=int(ws_word_count*1.3), ncols=60) # sometimes progress bar goes over
         while sampled_words < ws_word_count:
             # Sample, tokenize and process
             sample = self.data.sample(ws_len*2) # generally has fewer words/post. Might lead to duplicates, but drop them later
@@ -543,7 +543,7 @@ class News_matchDataset(Dataset):
                 r'us', fname, flags=re.IGNORECASE)])
 
         with Pool(self.n_jobs) as p:
-            dfs = list(tqdm(p.imap(load_now, fpaths), total=len(fpaths), ncols=80))
+            dfs = list(tqdm(p.imap(load_now, fpaths), total=len(fpaths), ncols=60))
         self.data = pd.concat(dfs)
 
     def process(self):
@@ -562,7 +562,7 @@ class News_matchDataset(Dataset):
         # Process data
         with Pool(self.n_jobs) as p:
             self.data['text'], self.data['word_count'] = list(zip(*tqdm(p.imap(
-                    process_now, self.data['article']), total=len(self.data), ncols=80)))
+                    process_now, self.data['article']), total=len(self.data), ncols=60)))
         self.uniform_format(timestamp_col='year', format='%Y')
 
 
@@ -573,7 +573,7 @@ class Twitter_matchDataset(RawTwitter):
     def load(self):
         """ Load tweets collected through keywords at get_tweets_by_query.py (I think) and get_tweets_by_query.ipynb """
         dfs = []
-        for fname in tqdm(sorted(os.listdir(self.load_paths[0])), ncols=80):
+        for fname in tqdm(sorted(os.listdir(self.load_paths[0])), ncols=60):
             with open(os.path.join(self.load_paths[0], fname)) as f:
                 dfs.append(pd.json_normalize([json.loads(line) for line in f.read().splitlines()]))
         self.data = pd.concat(dfs).reset_index(drop=True)
@@ -925,7 +925,7 @@ class Medium_antiracistDataset(Dataset):
         self.data = self.data.sample(len(self.ref_corpora[ws_match]), random_state=9)
 
         # Process
-        self.data['text'], self.data['word_count'] = list(zip(*tqdm(self.data['text'].map(tokenize_lowercase), ncols=80)))
+        self.data['text'], self.data['word_count'] = list(zip(*tqdm(self.data['text'].map(tokenize_lowercase), ncols=60)))
         self.uniform_format(timestamp_col='date')
 
 
