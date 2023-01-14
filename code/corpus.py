@@ -198,7 +198,7 @@ class Corpus:
             if frac is not None and frac > 1:
                replace = True 
             sampled = selected.sample(n=self.sample_info.get('sample_n', None), 
-                    frac=frac, replace=replace)
+                    frac=frac, replace=replace, random_state=9)
             self.folds[fold] = pd.concat([sampled, rest]).sort_index()
 
     def print_save_stats(self):

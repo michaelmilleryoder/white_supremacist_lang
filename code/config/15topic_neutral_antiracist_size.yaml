@@ -96,7 +96,7 @@ corpora:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
 
   neutral_antiracist_size_15topic: # all neutral, but size of neutral + antiracist corpus
-    create: False
+    create: True
     label: neutral
     min_word_limit: 1
     datasets:
@@ -176,10 +176,10 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  #name: 15topic_neutral_antiracist_size
-  name: 15topic_neutral_antiracist_size_38260_test
-  #train: True
-  train: False
+  name: 15topic_neutral_antiracist_size
+  #name: 15topic_neutral_antiracist_size_38260_test
+  train: True
+  #train: False
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
     - name: white_supremacist_train_15topic
@@ -192,6 +192,6 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     pretrained_model: 'distilbert-base-uncased'
     n_epochs: 6
-    #load: Null # Null to train a new model from scratch, or a path to the model to load
-    load: '../output/bert/15topic_neutral_antiracist_size/checkpoint-38260'
+    load: Null # Null to train a new model from scratch, or a path to the model to load
+    #load: '../output/bert/15topic_neutral_antiracist_size/checkpoint-38260'
     checkpoints: epoch
