@@ -173,9 +173,10 @@ class BertClassifier:
             prob_combined[:,label_dst] = prob_combined[:,label_src] + prob_combined[:,label_dst]
             prob_combined = np.delete(prob_combined, label_src, axis=1)
             prob = prob_combined
-        if prob.shape[1] == 2: # just keep one probability (for white supremacist positive class)
-            assert max(self.label2id.values()) == self.label2id['white_supremacist'] # white supremacist is last column
-            prob = prob[:,-1]
+        if len(self.idlabel.keys()) == 2: # binary classification
+            if prob.shape[1] == 2: # just keep one probability (for white supremacist positive class)
+                assert max(self.label2id.values()) == self.label2id['white_supremacist'] # white supremacist is last column
+                prob = prob[:,-1]
         results = {}
         for metric_name, metric in self.metrics.items():
             if metric_name in ['precision', 'recall', 'f1']:
