@@ -65,7 +65,8 @@ class BertClassifier:
                 label2id: mapping of class names to class IDs
                 pretrained_model: Hugging Face name of the pretrained model to load and fine-tune (default distilbert-base-uncased)
                 n_epochs: number of epochs to train
-                checkpoints: whether to save at 'epoch' or 'steps', which will save a fixed number of times over training
+                checkpoints: whether to save at 'epoch' or 'steps', which will save a fixed number of times over training. 
+                    'debug' will save after 20 steps
                 test_label_combine: a dictionary of any changes of predicted labels to make 
                     (to combine 3-way to 2-way classification, eg)
         """
@@ -82,16 +83,20 @@ class BertClassifier:
             self.model = AutoModelForSequenceClassification.from_pretrained(load)
             self.tokenizer = AutoTokenizer.from_pretrained(load)
         self.n_epochs = n_epochs
-        self.checkpoints = checkpoints if checkpoints in ['steps', 'epoch'] else 'no'
+        #self.checkpoints = checkpoints if checkpoints in ['steps', 'epoch'] else 'no'
+        self.checkpoints = checkpoints
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
+        self.test_label_combine = test_label_combine
+        if len(self.label2id) > 2 and self.test_label_combine is None: # need to do multiclass
+            auc_type = 'multiclass'
+        else:
+            auc_type = 'binary'
         self.metrics = {'accuracy': load_metric('accuracy'), 
                 'precision': load_metric('precision'),
                 'recall': load_metric('recall'),
                'f1': load_metric('f1'),
-                #'roc_auc': load_metric('roc_auc', 'multiclass')
-                'roc_auc': load_metric('roc_auc')
+                'roc_auc': load_metric('roc_auc', auc_type)
             }
-        self.test_label_combine = test_label_combine
         #if n_labels == 2:
         #    self.metrics = {'accuracy': load_metric('accuracy'), 
         #            'precision': load_metric('precision'),
@@ -107,8 +112,12 @@ class BertClassifier:
             self.checkpoint_steps = self.batch_size * int(2e3)
         else:
             total_steps = (int(train_length/self.batch_size) + 1) * self.n_epochs
-            self.checkpoint_steps = int(total_steps/30)
-            #pdb.set_trace() # check that train_length, steps is working as expected (doesn't match progress bar for some reason)
+            if self.checkpoints == 'debug':
+                self.checkpoint_steps = 20
+                self.checkpoints = 'steps'
+            else:
+                self.checkpoint_steps = int(total_steps/30)
+                #pdb.set_trace() # check that train_length, steps is working as expected (doesn't match progress bar for some reason)
             #    # Probably is batch size "per device" * devices or something? Can't check DataLoader
         self.output_dir = f"../output/bert/{self.exp_name}"
         if train:
@@ -162,7 +171,7 @@ class BertClassifier:
         predictions = np.argmax(logits, axis=-1)
         prob = scipy.special.softmax(logits, axis=-1)
         #predictions = self.return_preds(logits) # for shifts
-        if self.test_label_combine is not None:
+        if self.test_label_combine is not None: # shift probabilities to combined label
             predictions = np.array([self.label2id[self.test_label_combine.get(self.id2label[pred], 
                 self.id2label[pred])] for pred in predictions])
             label_src = self.label2id[list(self.test_label_combine.keys())[0]] 
@@ -174,9 +183,9 @@ class BertClassifier:
             prob_combined = np.delete(prob_combined, label_src, axis=1)
             prob = prob_combined
             #if len(self.id2label.keys()) == 2 and self.test_label_combine is None: # binary classification
-            if prob.shape[1] == 2: # just keep one probability (for white supremacist positive class)
-                assert max(self.label2id.values()) == self.label2id['white_supremacist'] # white supremacist is last column
-                prob = prob[:,-1]
+        if prob.shape[1] == 2: # just keep one probability (for white supremacist positive class)
+            assert max(self.label2id.values()) == self.label2id['white_supremacist'] # white supremacist is last column
+            prob = prob[:,-1]
         results = {}
         for metric_name, metric in self.metrics.items():
             if metric_name in ['precision', 'recall', 'f1']:
@@ -211,7 +220,7 @@ class BertClassifier:
                     continue
                 elif len(set(labels)) == 2:
                     results[metric_name] = metric.compute(references=labels, prediction_scores=prob)
-                else: # len(set(labels)) > 2:
+                else: # len(set(labels)) > 2: # only happens during training on dev set (unless would have antiracist test labels)
                     results[metric_name] = metric.compute(references=labels, prediction_scores=prob, multi_class='ovr')
                 #results[metric_name + '_weighted'] = metric.compute(references=labels, prediction_scores=prob, 
                 #    multi_class='ovr', average='weighted')

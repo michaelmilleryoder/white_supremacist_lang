@@ -199,10 +199,10 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 3way_6topic_tailored
-  #name: 6topic_tailored_26402_test
-  train: True
-  #train: False
+  #name: 3way_6topic_tailored
+  name: 3way_6topic_tailored_20530_test
+  #train: True
+  train: False
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
     - name: white_supremacist_train_6topic
@@ -213,11 +213,12 @@ experiment: # define experiments where train particular classifiers on particula
       #fold: test
     - name: domain_test
     - name: bias_test_identity_nonhate
-  test_label_combine: {antiracist: neutral}
+  test_label_combine: {antiracist: neutral} # only use when not training (at least for 3way models)
   classifier: 
     type: bert
     pretrained_model: 'distilbert-base-uncased'
     n_epochs: 5
-    load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/6topic_tailored/checkpoint-26402'
+    #load: Null # Null to train a new model from scratch, or a path to the model to load
+    load: '../output/bert/3way_6topic_tailored/checkpoint-20530'
     checkpoints: epoch
+    #checkpoints: debug

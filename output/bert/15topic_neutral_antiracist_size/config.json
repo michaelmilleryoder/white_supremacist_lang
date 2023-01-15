@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "../output/bert/15topic_neutral_antiracist_size/checkpoint-57390",
+  "_name_or_path": "distilbert-base-uncased",
   "activation": "gelu",
   "architectures": [
     "DistilBertForSequenceClassification"
