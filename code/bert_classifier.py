@@ -173,7 +173,7 @@ class BertClassifier:
             prob_combined[:,label_dst] = prob_combined[:,label_src] + prob_combined[:,label_dst]
             prob_combined = np.delete(prob_combined, label_src, axis=1)
             prob = prob_combined
-        if len(self.idlabel.keys()) == 2: # binary classification
+            #if len(self.id2label.keys()) == 2 and self.test_label_combine is None: # binary classification
             if prob.shape[1] == 2: # just keep one probability (for white supremacist positive class)
                 assert max(self.label2id.values()) == self.label2id['white_supremacist'] # white supremacist is last column
                 prob = prob[:,-1]
