@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 
 from bert_classifier import BertClassifier
+from siegel2021_dict_classifier import Siegel2021DictClassifier
 from corpus import Corpus
 
 
@@ -30,9 +31,11 @@ class Experiment:
         self.do_test = test
         self.corpora = corpora
         self.train_corpora = train_corpora
-        self.train_data = pd.concat([self.corpora[corpus_info['name']].folds[corpus_info.get('fold', 'all')] 
-                for corpus_info in self.train_corpora])
-        self.remove_train_duplicates()
+        self.train_data = None
+        if self.train_corpora is not None:
+            self.train_data = pd.concat([self.corpora[corpus_info['name']].folds[corpus_info.get('fold', 'all')] 
+                    for corpus_info in self.train_corpora])
+            self.remove_train_duplicates()
         self.test_corpora = test_corpora
         self.clf = None
         self.label2id = None
@@ -56,6 +59,9 @@ class Experiment:
                     checkpoints = classifier.get('checkpoints', None),
                     test_label_combine=self.test_label_combine,
                 )
+        elif classifier['type'] == 'siegel2021_dict':
+            self.label2id = {'neutral': 0, 'white_supremacist': 1}
+            self.clf = Siegel2021DictClassifier(self.name, load=classifier['load'])
         
     def run(self):
         if self.do_train:

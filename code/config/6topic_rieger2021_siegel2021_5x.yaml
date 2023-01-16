@@ -219,10 +219,10 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 6topic_rieger2021_siegel2021_5x
-  #name: 6topic_annotated_5x_21210_test30
-  train: True
-  #train: False
+  #name: 6topic_rieger2021_siegel2021_5x
+  name: 6topic_rieger2021_siegel2021_5x_21356_test
+  #train: True
+  train: False
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
     - name: white_supremacist_train_6topic
@@ -238,6 +238,6 @@ experiment: # define experiments where train particular classifiers on particula
   classifier: 
     type: bert
     n_epochs: 5
-    load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/6topic_annotated_5x/checkpoint-21210'
+    #load: Null # Null to train a new model from scratch, or a path to the model to load
+    load: '../output/bert/6topic_rieger2021_siegel2021_5x/checkpoint-21356'
     checkpoints: epoch

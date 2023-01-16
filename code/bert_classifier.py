@@ -323,15 +323,18 @@ class BertClassifier:
                     result_lines.append({'dataset': dataset, 'metric': 'roc_auc', 'value': res['eval_roc_auc']['roc_auc']})
                 pred_output = self.trainer.predict(test_tokenized)
                 preds = np.argmax(pred_output.predictions, axis=-1)
+
                 # Save out numeric class probability predictions
                 prob_outpath = os.path.join(self.output_dir, f'{dataset}_pred_probs.txt')
                 prob = scipy.special.softmax(pred_output.predictions, axis=-1)
                 class_prob = pd.DataFrame(prob)
                 class_prob.columns = class_prob.columns.map(self.id2label)
                 class_prob.to_json(prob_outpath, orient='records', lines=True)
+
                 # Save out class name predictions
                 pred_outpath = os.path.join(self.output_dir, f'{dataset}_predictions.json')
                 preds_classnames = pd.Series(preds).map(self.id2label).to_json(pred_outpath)
+
         results = pd.DataFrame(result_lines)
         outpath = os.path.join(self.output_dir, 'results.jsonl')
         results.to_json(outpath, orient='records', lines=True)

@@ -1,0 +1,68 @@
+---
+# Define which datasets are in which corpora
+corpora:
+
+  annotated: # test sets human-annotated for white supremacy
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+    split:
+      test_size: 0.3
+    datasets:
+      - name: alatawi2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+      - name: siegel2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+      #- name: siegel2021_white_nationalist_only # Probably put in separate corpus to eval
+      #  source: twitter
+      #  domain: tweet
+      #  load_paths:
+      #    - '../data/siegel2021/white_nationalist_training_data.csv'
+      #    - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  domain_test: # out-of-domain evaluations
+    create: False
+    label: {0: neutral, 1: white_supremacist}
+    datasets:
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_quotes_annotated.csv'
+
+  bias_test_identity_nonhate:
+    create: False
+    label: neutral
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
+
+experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
+  name: siegel2021_baseline
+  train: False
+  test: True
+  test_corpora: 
+    - name: annotated
+      fold: test
+    - name: domain_test
+    - name: bias_test_identity_nonhate
+  classifier: 
+    type: siegel2021_dict
+    load: '../output/siegel2021_dict_classifier/nb_clf.pkl'
+

@@ -1,0 +1,11 @@
+{"dataset":"rieger2021","metric":"precision","label":"neutral","value":0.9849604894}
+{"dataset":"rieger2021","metric":"precision","label":"white_supremacist","value":0.2518397383}
+{"dataset":"rieger2021","metric":"precision","label":"weighted","value":0.9326761296}
+{"dataset":"rieger2021","metric":"recall","label":"neutral","value":0.8085373509}
+{"dataset":"rieger2021","metric":"recall","label":"white_supremacist","value":0.8392370572}
+{"dataset":"rieger2021","metric":"recall","label":"weighted","value":0.8107267781}
+{"dataset":"rieger2021","metric":"f1","label":"neutral","value":0.8880717077}
+{"dataset":"rieger2021","metric":"f1","label":"white_supremacist","value":0.3874213836}
+{"dataset":"rieger2021","metric":"f1","label":"weighted","value":0.8523665641}
+{"dataset":"rieger2021","metric":"accuracy","label":null,"value":0.8107267781}
+{"dataset":"rieger2021","metric":"roc_auc","label":null,"value":0.8978386937}
