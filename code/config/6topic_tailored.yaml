@@ -200,7 +200,7 @@ corpora:
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   #name: 6topic_tailored
-  name: 6topic_tailored_20530_test
+  name: 6topic_tailored_20530_test30
   #train: True
   train: False
   test: True
@@ -210,7 +210,7 @@ experiment: # define experiments where train particular classifiers on particula
     - name: antiracist_train_6topic
   test_corpora: 
     - name: annotated
-      #fold: test
+      fold: test
     - name: domain_test
     - name: bias_test_identity_nonhate
   classifier: 
