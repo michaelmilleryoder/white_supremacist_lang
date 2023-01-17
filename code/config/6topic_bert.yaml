@@ -200,7 +200,8 @@ corpora:
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   #name: 6topic_bert
-  name: 6topic_bert_20530_test
+  #name: 6topic_bert_20530_test
+  name: 6topic_bert_20530_test30
   #train: True
   train: False
   test: True

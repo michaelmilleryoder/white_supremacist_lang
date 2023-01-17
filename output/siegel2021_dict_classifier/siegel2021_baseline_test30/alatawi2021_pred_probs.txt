@@ -1,0 +1,6 @@
+{"neutral":0.9659549991,"white_supremacist":0.0340450009}
+{"neutral":0.9999999905,"white_supremacist":0.0000000095}
+{"neutral":1.0,"white_supremacist":0.0}
+{"neutral":0.9999999991,"white_supremacist":0.0000000009}
+{"neutral":1.0,"white_supremacist":0.0}
+{"neutral":1.0,"white_supremacist":0.0}

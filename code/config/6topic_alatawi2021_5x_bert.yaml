@@ -225,8 +225,9 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: 6topic_alatawi2021_5x_bert
-  #name: 6topic_alatawi2021_5x_20648_test30
+  #name: 6topic_alatawi2021_5x_bert
+  name: 6topic_alatawi2021_5x_bert_nolda
+  #name: 6topic_alatawi2021_5x_bert_20648_test30
   train: True
   #train: False
   test: True
@@ -236,7 +237,7 @@ experiment: # define experiments where train particular classifiers on particula
     - name: antiracist_train_6topic
     - name: annotated_alatawi2021_5x
       fold: train
-    - name: annotated_lda_5x
+    #- name: annotated_lda_5x
   test_corpora: 
     - name: annotated
       fold: test
@@ -247,5 +248,5 @@ experiment: # define experiments where train particular classifiers on particula
     pretrained_model: 'bert-base-uncased'
     n_epochs: 5
     load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/6topic_alatawi2021_5x/checkpoint-20648'
+    #load: '../output/bert/6topic_alatawi2021_5x_bert/checkpoint-20648'
     checkpoints: epoch

@@ -54,15 +54,15 @@ corpora:
 
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
-  name: siegel2021_baseline
+  name: siegel2021_baseline_test
   train: False
   test: True
   test_corpora: 
     - name: annotated
-      fold: test
+      #fold: test
     - name: domain_test
     - name: bias_test_identity_nonhate
   classifier: 
     type: siegel2021_dict
-    load: '../output/siegel2021_dict_classifier/nb_clf.pkl'
+    load: True
 
