@@ -226,10 +226,11 @@ corpora:
 
 experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
   #name: 6topic_alatawi2021_5x_bert
-  name: 6topic_alatawi2021_5x_bert_nolda
+  #name: 6topic_alatawi2021_5x_bert_nolda
   #name: 6topic_alatawi2021_5x_bert_20648_test30
-  train: True
-  #train: False
+  name: 6topic_alatawi2021_5x_bert_nolda_20608_test30
+  #train: True
+  train: False
   test: True
   train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
     - name: white_supremacist_train_6topic
@@ -247,6 +248,6 @@ experiment: # define experiments where train particular classifiers on particula
     type: bert
     pretrained_model: 'bert-base-uncased'
     n_epochs: 5
-    load: Null # Null to train a new model from scratch, or a path to the model to load
-    #load: '../output/bert/6topic_alatawi2021_5x_bert/checkpoint-20648'
+    #load: Null # Null to train a new model from scratch, or a path to the model to load
+    load: '../output/bert/6topic_alatawi2021_5x_bert_nolda/checkpoint-20608'
     checkpoints: epoch
