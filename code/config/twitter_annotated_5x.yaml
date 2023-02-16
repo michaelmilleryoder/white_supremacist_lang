@@ -1,0 +1,140 @@
+---
+# Define which datasets are in which corpora
+corpora:
+
+  white_supremacist_train_twitter:
+    create: False
+    label: white_supremacist
+    min_word_limit: 1
+    datasets:  # any unique name, source, or domain is its own
+      - name: qian2018
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/qian2018/data.jsonl
+      - name: elsherief2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/elsherief2021/data.jsonl
+          - ../data/elsherief2021/users.jsonl
+          - ../data/qian2018/users.jsonl
+          - ../../data/hate_speech/elsherief2021/implicit_hate_v1_stg2_posts.tsv
+
+  neutral_train_twitter:
+    create: False
+    label: neutral
+    min_word_limit: 1
+    datasets:
+      - name: twitter_match
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '../data/neutral/twitter/'
+    ref_corpora: 
+      - 'white_supremacist_train_twitter'
+
+  antiracist_train_twitter:
+    create: False
+    label: neutral
+    min_word_limit: 1
+    datasets:
+      - name: twitter_antiracist
+        source: twitter
+        domain: tweet
+        load_paths: 
+          - '../data/antiracist/twitter/'
+    ref_corpora: 
+      - 'white_supremacist_train_twitter'
+      - 'neutral_train_twitter'
+
+  annotated_5x_twitter: # test sets human-annotated for white supremacy
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+    split:
+      test_size: 0.3
+      split_ref: annotated # split based on a prior corpus's train/test split
+    sample:
+      sample_factor: 5 # factor to multiply the sample by (for training fold if split)
+    datasets:
+      - name: alatawi2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+      - name: siegel2021 
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+
+  annotated: # test sets human-annotated for white supremacy
+    create: False
+    label: {1: white_supremacist, 0: neutral}
+    split:
+      test_size: 0.3
+    datasets:
+      - name: alatawi2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+      - name: siegel2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021
+        source: 4chan # actually is reddit, 4chan and 8chan (could separate)
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+  domain_test: # out-of-domain evaluations
+    create: False
+    label: {0: neutral, 1: white_supremacist}
+    datasets:
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_quotes_annotated.csv'
+
+  bias_test_identity_nonhate:
+    create: False
+    label: neutral
+    datasets:
+      - name: hatecheck_identity_nonhate
+        source: hatecheck
+        domain: synthetic
+        load_paths:
+          - '../../data/hate_speech/hatecheck-data/test_suite_cases.csv'
+
+
+experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
+  name: twitter_annotated_5x
+  #name: 6topic_annotated_5x_21210_test30
+  train: True
+  #train: False
+  test: True
+  train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
+    - name: white_supremacist_train_twitter
+    - name: neutral_train_twitter
+    - name: antiracist_train_twitter
+    - name: annotated_5x_twitter
+      fold: train
+  test_corpora: 
+    - name: annotated
+      fold: test
+    - name: domain_test
+    - name: bias_test_identity_nonhate
+  classifier: 
+    type: bert
+    pretrained_model: 'distilbert-base-uncased'
+    n_epochs: 5
+    load: Null # Null to train a new model from scratch, or a path to the model to load
+    #load: '../output/bert/6topic_annotated_5x/checkpoint-21210'
+    checkpoints: epoch
