@@ -1,0 +1,151 @@
+---
+# Define which datasets are in which corpora
+corpora:
+
+  white_supremacist_users: # All white supremacist texts (including annotated, etc), no filtering, with usernames when available
+    create: True
+    label: white_supremacist
+    min_word_limit: 1
+    lda_filter: Null
+    sample: Null
+    datasets:  # any unique name, source, or domain is its own
+      - name: qian2018
+        source: twitter
+        domain: tweet
+        include_users: True
+        load_paths:
+          - ../data/qian2018/data.jsonl
+      - name: elsherief2021
+        source: twitter
+        domain: tweet
+        load_paths:
+          - ../data/elsherief2021/data.jsonl
+          - ../data/elsherief2021/users.jsonl
+          - ../data/qian2018/users.jsonl
+          - ../../data/hate_speech/elsherief2021/implicit_hate_v1_stg2_posts.tsv
+      - name: patriotfront
+        source: discord
+        domain: chat
+        include_users: True
+        load_paths:
+          - ../../data/patriotfront/2017-Vanguard_America-Patriot_Front/Discord/dump
+          - ../../data/patriotfront/2018/Discord/dump_Front_And_Center
+          - ../../data/patriotfront/2018/Discord/dump_MI_Goy_Scouts_Official
+          - ../resources/us_first_names_1990.csv
+      - name: ironmarch
+        source: ironmarch
+        domain: forum
+        include_users: True
+        load_paths:
+          - ../data/iron_march_201911/csv/core_search_index.csv
+      - name: stormfront
+        source: stormfront
+        domain: forum
+        include_users: True
+        load_paths:
+          - ../data/stormfront_archive/processed
+      - name: jokubausaite2020
+        source: 4chan
+        domain: forum
+        include_users: True
+        load_paths:
+          - ../../data/4chan/jokubausaite2020/
+      - name: papasavva2020
+        source: 4chan
+        domain: forum
+        include_users: True
+        load_paths:
+          - ../data/papasavva2020_white_supremacist_flag_posts.csv
+          - ../../data/4chan/jokubausaite2020/
+      - name: calderon2021
+        source: daily_stormer
+        domain: long-form
+        load_paths:
+          - ../data/calderon2021/d_stormer_documents.json
+      #- name: calderon2021 # all this text is present in calderon2021 daily_stormer
+      #  source: american_renaissance
+      #  domain: long-form
+      #  load_paths:
+      #    - ../data/calderon2021/amran_documents.json
+      - name: pruden2022
+        source: breivik_manifesto
+        domain: long-form
+        load_paths:
+          - ../data/pruden2022/AndersBehringBreivikManifesto.txt
+      - name: pruden2022
+        source: powell_rivers_of_blood_speech
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Enoch-Powells-Rivers-of-Blood-new-analysis-pdf.txt'
+      - name: pruden2022
+        source: raspail_camp_of_the_saints_book
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Jean-Raspail-Camp-of-the-Saints.txt'
+      - name: pruden2022
+        source: lane_white_genocide_manifesto
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Lane_White Genocide Manifesto.txt'
+      - name: pruden2022
+        source: camus_the_great_replacement_book
+        domain: long-form
+        load_paths:
+          - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
+      - name: adl_heatmap
+        source: adl_heatmap
+        domain: offline_propaganda
+        load_paths:
+          - '../data/adl_heatmap/adl_white_supremacist_quotes_unique.json'
+      - name: alatawi2021_white_supremacist
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/alatawi2021_white_supremacist_annotated_tweets.csv'
+      - name: siegel2021_white_supremacist
+        source: twitter
+        domain: tweet
+        load_paths:
+          - '../data/siegel2021/white_nationalist_training_data.csv'
+          - '../data/siegel2021/hate_speech_training_data.csv'
+      - name: rieger2021_white_supremacist
+        source: 4chan
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+      - name: rieger2021_white_supremacist
+        source: 8chan
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+      - name: rieger2021_white_supremacist
+        source: reddit
+        domain: forum
+        load_paths:
+          - '../../data/hate_speech/rieger2021/Datensatz mit mf_ide2.csv'
+          - '../../data/hate_speech/rieger2021/Kiening_Kommentare.xlsx'
+
+
+experiment: # define experiments where train particular classifiers on particular sets of training and testing corpora
+  name: Null
+  train: False
+  test: False
+  train_corpora: # could specify a flag in the corpora, but that's not really about the corpus
+    - name: white_supremacist_train
+    - name: neutral_train
+    - name: antiracist_train
+    - name: annotated_5x
+      fold: train
+    - name: annotated_lda_5x
+  test_corpora: 
+    - name: annotated_5x
+      fold: test
+    - name: domain_test
+    - name: bias_test
+  classifier: 
+    type: bert
+    n_epochs: 10
+    load: Null # Null to train a new model from scratch, or a path to the model to load
+    #load: '../output/bert/checkpoint-778326' # Null to train a new model from scratch, or a path to the model to load
