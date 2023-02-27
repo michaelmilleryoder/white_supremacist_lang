@@ -767,10 +767,6 @@ class Adl_heatmapDataset(Dataset):
 class Adl_heatmap_white_supremacistDataset(Adl_heatmapDataset):
     """ Offline propaganda from ADL HEATMap dataset, only keeping those annotated for white supremacist ideology """
 
-    def load(self):
-        # Load annotated unique quotes
-        self.data = pd.read_csv(self.load_paths[0])
-
     def process(self):
         self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].str.slice(1,-1).map(tokenize_lowercase)))
         self.data['length'] = self.data.text.str.len()
