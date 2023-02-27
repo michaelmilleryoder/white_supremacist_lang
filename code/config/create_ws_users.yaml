@@ -41,22 +41,22 @@ corpora:
       - name: stormfront
         source: stormfront
         domain: forum
-        include_users: True
+        #include_users: True
         load_paths:
           - ../data/stormfront_archive/processed
-      - name: jokubausaite2020
+      - name: jokubauskaite2020
         source: 4chan
         domain: forum
         include_users: True
         load_paths:
-          - ../../data/4chan/jokubausaite2020/
+          - ../../data/4chan/jokubauskaite2020/
       - name: papasavva2020
         source: 4chan
         domain: forum
         include_users: True
         load_paths:
           - ../data/papasavva2020_white_supremacist_flag_posts.csv
-          - ../../data/4chan/jokubausaite2020/
+          - ../../data/4chan/jokubauskaite2020/
       - name: calderon2021
         source: daily_stormer
         domain: long-form
@@ -92,11 +92,11 @@ corpora:
         domain: long-form
         load_paths:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
-      - name: adl_heatmap
+      - name: adl_heatmap_white_supremacist
         source: adl_heatmap
         domain: offline_propaganda
         load_paths:
-          - '../data/adl_heatmap/adl_white_supremacist_quotes_unique.json'
+          - '../data/adl_heatmap/adl_quotes_annotated.csv'
       - name: alatawi2021_white_supremacist
         source: twitter
         domain: tweet

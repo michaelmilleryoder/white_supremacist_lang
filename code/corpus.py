@@ -32,7 +32,7 @@ class Corpus:
                 create: whether to recreate the corpus by loading and processing each dataset
                         and saving to self.fpath.
                         If False, will attempt to load the corpus from self.fpath
-                datasets: list of dictionaries with names and associated loading paths for datasets
+                datasets: list of dictionaries with names and associated info (loading paths, etc) for datasets
                 ref_corpora: a list of the names of any reference corpora that are used to construct this corpus. 
                         Will be loaded from disk (must already be saved out) if create is True
                 match_factor: factor to multiply even sample with reference corpus by
@@ -72,7 +72,8 @@ class Corpus:
         self.label = label
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], 
-                ref_corpora=ref_corpora, match_factor=self.match_factor, min_word_limit=min_word_limit) for ds in datasets]
+                ref_corpora=ref_corpora, match_factor=self.match_factor, min_word_limit=min_word_limit,
+                include_users=ds.get('include_users', False)) for ds in datasets]
         self.lda_filter = lda_filter
         self.sample_info = sample
         self.split = split

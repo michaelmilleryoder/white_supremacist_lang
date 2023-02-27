@@ -50,7 +50,8 @@ class Dataset:
         return set(cls.__subclasses__()).union(
             [s for c in cls.__subclasses__() for s in c.all_subclasses()])
 
-    def __new__(cls, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1):
+    def __new__(cls, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1,
+            include_users: bool = False):
         """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
         #subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
@@ -60,7 +61,8 @@ class Dataset:
         instance = super(Dataset, subclass).__new__(subclass)
         return instance
 
-    def __init__(self, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1):
+    def __init__(self, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1,
+            include_users: bool = False):
         """ Args:
                 name: dataset name
                 source: source platform
@@ -70,6 +72,7 @@ class Dataset:
                     to use in assembling this dataset
                 match_factor: factor to multiply even sample with reference corpus by
                 min_word_limit: Minimum word limit of posts. Put 1 to take all posts
+                include_users: whether to include a column of usernames (if available)
         """
         self.name = name
         self.source = source
@@ -84,6 +87,7 @@ class Dataset:
                 self.lookup[name] = corpus_year_count(self.ref_corpora[name])
         self.match_factor = match_factor
         self.min_word_limit = min_word_limit
+        self.include_users = include_users
         self.n_jobs = 20 # number of processes for multiprocessing of data
         self.data = pd.DataFrame()
         #cls.get_subclass()
@@ -118,7 +122,7 @@ class Dataset:
         self.data['source'] = self.source
         self.data['domain'] = self.domain
         selected_cols = ['text', 'word_count', 'dataset', 'source', 'domain'] + \
-                [col for col in ['timestamp', 'label'] if col in self.data.columns]
+                [col for col in ['timestamp', 'label', 'user'] if col in self.data.columns]
         self.data = self.data[selected_cols]
 
     def load(self):
@@ -227,6 +231,10 @@ class PatriotfrontDataset(Dataset):
 
     def process(self):
         """ Process data into a format to combine with other datasets """
+        # Add user info
+        if self.include_users:
+            self.data['user'] = self.data.user_id 
+
         # Remove any common first names
         names = pd.read_csv(self.load_paths[-1], skiprows=[0])
         names = names.query('Rank <= 300')
@@ -247,6 +255,11 @@ class IronmarchDataset(Dataset):
 
     def process(self):
         """ Process data into a format to combine with other datasets """
+        # Add user info
+        if self.include_users:
+            self.data['user'] = self.data.index_author 
+
+        # Tokenize, etc
         with Pool(self.n_jobs) as p:
             self.data['processed'], self.data['word_count'] = list(zip(*tqdm(p.imap(
                     tokenize_lowercase, self.data['index_content']), total=len(self.data), ncols=60)))
@@ -305,7 +318,7 @@ class StormfrontDataset(Dataset):
         self.uniform_format(timestamp_col='timestamp', errors='coerce')
 
 
-class Jokubausaite2020Dataset(Dataset):
+class Jokubauskaite2020Dataset(Dataset):
 
     def load(self):
         """ Load dataset, select certain threads """
@@ -336,6 +349,12 @@ class Jokubausaite2020Dataset(Dataset):
 
     def process(self):
         """ Process data into a format to combine with other datasets """
+        # Add user info
+        if self.include_users:
+            self.data['user'] = self.data['author'] # username, if provided (rarely is)
+            self.data['user'] = self.data.user.replace('Anonymous', np.nan)
+
+        # Tokenize, etc
         nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
@@ -375,6 +394,12 @@ class Papasavva2020Dataset(Dataset):
             dfs.append(pd.read_csv(fpath, low_memory=False))
         jokubausaite2020_ids = pd.concat(dfs).reset_index(drop=True)['id']
         self.data = self.data[~self.data.id.isin(jokubausaite2020_ids)]
+
+        # Add user info
+        if self.include_users:
+            self.data['user'] = self.data.trip # user tripcode
+
+        # Tokenize, etc
         nlp = spacy.load('en_core_web_sm', disable=['tok2vec', 'tagger', 'parser', 'ner'])
         zipped = zip(self.data.body, itertools.repeat(nlp))
         with Pool(self.n_jobs) as p:
@@ -736,6 +761,24 @@ class Adl_heatmapDataset(Dataset):
         self.data = self.data[self.data.length>1]
         self.data = self.data[self.data.text != "\n "]
         self.data['label'] = self.data['Michael'].fillna(self.data['Annotation (propaganda or Not)'])
+        self.uniform_format()
+
+
+class Adl_heatmap_white_supremacistDataset(Adl_heatmapDataset):
+    """ Offline propaganda from ADL HEATMap dataset, only keeping those annotated for white supremacist ideology """
+
+    def load(self):
+        # Load annotated unique quotes
+        self.data = pd.read_csv(self.load_paths[0])
+
+    def process(self):
+        self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].str.slice(1,-1).map(tokenize_lowercase)))
+        self.data['length'] = self.data.text.str.len()
+        self.data = self.data[self.data.length>1]
+        self.data = self.data[self.data.text != "\n "]
+        self.data['label'] = self.data['Michael'].fillna(self.data['Annotation (propaganda or Not)'])
+        # Filter to just data labeled for white supremacist ideology
+        self.data = self.data[self.data.label==1]
         self.uniform_format()
 
 
