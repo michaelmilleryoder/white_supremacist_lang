@@ -8,6 +8,7 @@ corpora:
     min_word_limit: 1
     lda_filter: Null
     sample: Null
+    remove_duplicates: False
     datasets:  # any unique name, source, or domain is its own
       - name: qian2018
         source: twitter
@@ -95,8 +96,11 @@ corpora:
       - name: adl_heatmap_white_supremacist
         source: adl_heatmap
         domain: offline_propaganda
+        remove_duplicates: False
         load_paths:
+          - '../data/adl_heatmap/adl_white_supremacist_quotes.json'
           - '../data/adl_heatmap/adl_quotes_annotated.csv'
+          - '../data/adl_heatmap/adl_white_supremacist_quotes_unique.json'
       - name: alatawi2021_white_supremacist
         source: twitter
         domain: tweet

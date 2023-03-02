@@ -51,7 +51,7 @@ class Dataset:
             [s for c in cls.__subclasses__() for s in c.all_subclasses()])
 
     def __new__(cls, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1,
-            include_users: bool = False):
+            include_users: bool = False, remove_duplicates: bool = True):
         """ Choose the right subclass based on dataset name """
         subclass_name = f"{name.capitalize()}Dataset"
         #subclass_map = {subclass.__name__: subclass for subclass in cls.__subclasses__()}
@@ -62,7 +62,7 @@ class Dataset:
         return instance
 
     def __init__(self, name, source, domain, load_paths, ref_corpora=None, match_factor=1, min_word_limit=1,
-            include_users: bool = False):
+            include_users: bool = False, remove_duplicates: bool = False):
         """ Args:
                 name: dataset name
                 source: source platform
@@ -73,6 +73,7 @@ class Dataset:
                 match_factor: factor to multiply even sample with reference corpus by
                 min_word_limit: Minimum word limit of posts. Put 1 to take all posts
                 include_users: whether to include a column of usernames (if available)
+                remove_duplicates: whether to remove entries with duplicate texts
         """
         self.name = name
         self.source = source
@@ -88,6 +89,7 @@ class Dataset:
         self.match_factor = match_factor
         self.min_word_limit = min_word_limit
         self.include_users = include_users
+        self.remove_duplicates = remove_duplicates
         self.n_jobs = 20 # number of processes for multiprocessing of data
         self.data = pd.DataFrame()
         #cls.get_subclass()
@@ -115,7 +117,8 @@ class Dataset:
         #with Pool(self.n_jobs) as p:
         #    self.data['word_count'] = list(tqdm(p.imap(word_count, self.data.text), total=len(self.data), ncols=60))
         self.data = self.data[self.data['word_count'] >= self.min_word_limit]
-        self.data.drop_duplicates(subset='text', keep='first', inplace=True)
+        if self.remove_duplicates:
+            self.data.drop_duplicates(subset='text', keep='first', inplace=True)
         if timestamp_col is not None:
             self.data['timestamp'] = pd.to_datetime(self.data[timestamp_col], format=format, utc=True, unit=unit, errors=errors)
         self.data['dataset'] = self.name
@@ -732,7 +735,7 @@ class Siegel2021_white_supremacistDataset(Siegel2021Dataset):
 
 
 class Adl_heatmapDataset(Dataset):
-    """ Offline propaganda from ADL HEATMap dataset """
+    """ Offline propaganda from ADL HEATMap dataset (just unique quotes) """
 
     def load(self):
         # Load annotated unique quotes
@@ -764,18 +767,36 @@ class Adl_heatmapDataset(Dataset):
         self.uniform_format()
 
 
-class Adl_heatmap_white_supremacistDataset(Adl_heatmapDataset):
-    """ Offline propaganda from ADL HEATMap dataset, only keeping those annotated for white supremacist ideology """
+class Adl_heatmap_white_supremacistDataset(Dataset):
+    """ Offline propaganda from ADL HEATMap dataset, only keeping those annotated for white supremacist ideology.
+        Keeps duplicates.
+    """
+
+    def load(self):
+        # Load quotes from white supremacist groups (already extracted from event descriptions)
+        self.data = pd.read_json(self.load_paths[0], orient='table').reset_index(drop=True)
+
+        # Remove duplicates
+        #self.data = self.data.drop_duplicates(subset='quote').reset_index(drop=True)
+
+        # Load annotated unique quotes
+        annotations = pd.read_csv(self.load_paths[1])
+        annotations['label'] = annotations['Michael'].fillna(annotations['Annotation (propaganda or Not)'])
+        unique_quotes = pd.read_json(self.load_paths[2], orient='table') # to fetch the IDs
+
+        # Join in annotations
+        unique_quotes['label'] = annotations['label'] # quotes are in the same order
+        self.data = self.data.join(unique_quotes.set_index('quote')['label'], on='quote')
+
+        # Filter to just data labeled for white supremacist ideology
+        self.data = self.data[self.data.label==1]
 
     def process(self):
         self.data['text'], self.data['word_count'] = list(zip(*self.data['quote'].str.slice(1,-1).map(tokenize_lowercase)))
         self.data['length'] = self.data.text.str.len()
         self.data = self.data[self.data.length>1]
         self.data = self.data[self.data.text != "\n "]
-        self.data['label'] = self.data['Michael'].fillna(self.data['Annotation (propaganda or Not)'])
-        # Filter to just data labeled for white supremacist ideology
-        self.data = self.data[self.data.label==1]
-        self.uniform_format()
+        self.uniform_format(timestamp_col='date')
 
 
 class Rieger2021Dataset(Dataset):

@@ -26,7 +26,7 @@ class Corpus:
 
     def __init__(self, name: str, create: bool, datasets: list = [], ref_corpora: list[str] = None, 
                     match_factor: int = 1, min_word_limit: int = 1, label = None, lda_filter: dict = None, 
-                    sample: dict = None, split: dict = None):
+                    sample: dict = None, remove_duplicates: bool = True, split: dict = None):
         """ Args:
                 name: name for the corpus
                 create: whether to recreate the corpus by loading and processing each dataset
@@ -46,6 +46,7 @@ class Corpus:
                         query: to select data, 
                         sample_n: n to sample from that queried data
                         sample_factor: factor to multiply/sample the data by
+                remove_duplicates: whether to remove duplicate texts in the corpus
                 split: dict of info on train/test split. None if not splitting. 
                         Training and test splits (as well as the original) will be saved out.
                     Dict contains:
@@ -73,9 +74,11 @@ class Corpus:
         self.datasets = [Dataset(
                 ds['name'], ds['source'], ds['domain'], ds['load_paths'], 
                 ref_corpora=ref_corpora, match_factor=self.match_factor, min_word_limit=min_word_limit,
-                include_users=ds.get('include_users', False)) for ds in datasets]
+                include_users=ds.get('include_users', False), 
+                remove_duplicates=ds.get('remove_duplicates', True)) for ds in datasets]
         self.lda_filter = lda_filter
         self.sample_info = sample
+        self.remove_duplicates = remove_duplicates
         self.split = split
         self.split_ref = None
         if self.split is not None:
@@ -100,7 +103,9 @@ class Corpus:
                 if self.ref_corpora is not None:
                     dataset.print_stats()
                 dfs.append(dataset.data)
-            self.folds['all'] = pd.concat(dfs).drop_duplicates(subset='text')
+            self.folds['all'] = pd.concat(dfs)
+            if self.remove_duplicates:
+                self.folds['all'] = self.folds['all'].drop_duplicates(subset='text')
             if self.lda_filter is not None:
                 self.filter_lda()
             if self.split is not None:
