@@ -40,27 +40,28 @@ corpora:
         domain: forum
         load_paths:
           - ../data/stormfront_archive/processed
-      - name: jokubausaite2020
+      - name: jokubauskaite2020
         source: 4chan
         domain: forum
         load_paths:
-          - ../../data/4chan/jokubausaite2020/
+          - ../../data/4chan/jokubauskaite2020/
       - name: papasavva2020
         source: 4chan
         domain: forum
         load_paths:
           - ../data/papasavva2020_white_supremacist_flag_posts.csv
-          - ../../data/4chan/jokubausaite2020/
+          - ../../data/4chan/jokubauskaite2020/
       - name: calderon2021
         source: daily_stormer
         domain: long-form
         load_paths:
           - ../data/calderon2021/d_stormer_documents.json
-      #- name: calderon2021 # all this text is present in calderon2021 daily_stormer
-      #  source: american_renaissance
-      #  domain: long-form
-      #  load_paths:
-      #    - ../data/calderon2021/amran_documents.json
+          - ../data/calderon2021/amran_documents.json
+      - name: calderon2021
+        source: american_renaissance
+        domain: long-form
+        load_paths:
+          - ../data/calderon2021/amran_documents.json
       - name: pruden2022
         source: breivik_manifesto
         domain: long-form
@@ -86,10 +87,13 @@ corpora:
         domain: long-form
         load_paths:
           - '../data/pruden2022/Renaud Camus - The Great Replacement - Part I-RWTS (2012).txt'
-      - name: adl_heatmap
+      - name: adl_heatmap_white_supremacist
         source: adl_heatmap
         domain: offline_propaganda
+        remove_duplicates: False
         load_paths:
+          - '../data/adl_heatmap/adl_white_supremacist_quotes.json'
+          - '../data/adl_heatmap/adl_quotes_annotated.csv'
           - '../data/adl_heatmap/adl_white_supremacist_quotes_unique.json'
       - name: alatawi2021_white_supremacist
         source: twitter

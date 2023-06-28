@@ -55,7 +55,7 @@ class Corpus:
         """
         self.name = name
         self.base_dirpath = '../data/corpora'
-        self.fpath = os.path.join(self.base_dirpath, f'{self.name}_corpus.json')
+        self.fpath = os.path.join(self.base_dirpath, f'{self.name}_corpus.jsonl')
         self.stats_fpath = os.path.join(self.base_dirpath, f'{self.name}_stats.jsonl')
         self.base_tmp_fpath = '../tmp/{}_corpus.pkl' # pickling for faster loading
         self.tmp_fpath = self.base_tmp_fpath.format(self.name) # pickling for faster loading
@@ -238,7 +238,8 @@ class Corpus:
     def save(self):
         """ Save out corpus data for easier loading """
         print(f"Saving corpus to {self.fpath}...")
-        self.data.to_json(self.fpath, orient='table', indent=4)
+        #self.data.to_json(self.fpath, orient='table', indent=4)
+        self.data.to_json(self.fpath, orient='records', lines=True)
         print(f"Saving corpus to {self.tmp_fpath}...") # for faster loading as an option
         self.data.to_pickle(self.tmp_fpath)
         if self.split is not None:

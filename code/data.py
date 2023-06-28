@@ -420,6 +420,11 @@ class Calderon2021Dataset(Dataset):
         with open(self.load_paths[0]) as f:
             self.data = pd.json_normalize(json.load(f))
         self.data.index = self.source + '_' + self.data.index.astype(str)
+        if self.source == 'daily_stormer': # remove duplicates with American Renaissance data
+            with open(self.load_paths[1]) as f:
+                self.amren = pd.json_normalize(json.load(f))
+            amren_keys = set([tuple(el) for el in self.amren[['author', 'title', 'date']].values.tolist()])
+            self.data = self.data[~self.data.apply(lambda row: tuple([row['author'], row['title'], row['date']]) in amren_keys, axis=1)]
 
     def process(self):
         """ Process data into a format to combine with other datasets """
