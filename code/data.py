@@ -94,7 +94,7 @@ class Dataset:
         self.data = pd.DataFrame()
         #cls.get_subclass()
 
-    def uniform_format(self, timestamp_col=None, unit=None, format=None, errors='raise'):
+    def uniform_format(self, timestamp_col=None, unit=None, format=None, errors='raise', save_tweet_ids=False):
         """ Format the dataframe for combining with other datasets
             Set a column to a timestamp data type if there is one
             Create an index for the dataset with the dataset name.
@@ -107,6 +107,7 @@ class Dataset:
                 unit: Additional parameter to pass to pd.to_datetime
                 format: Additional parameter to pass to pd.to_datetime
                 errors: Additional parameter to pass to pd.to_datetime
+                save_tweet_ids: Whether to save out tweet IDs from tweets. Default False
         """
 
         # Set index first so regardless of filtering will have the same
@@ -126,6 +127,8 @@ class Dataset:
         self.data['domain'] = self.domain
         selected_cols = ['text', 'word_count', 'dataset', 'source', 'domain'] + \
                 [col for col in ['timestamp', 'label', 'user'] if col in self.data.columns]
+        if save_tweet_ids:
+                selected_cols.append('tweet_id')
         self.data = self.data[selected_cols]
 
     def load(self):
@@ -169,7 +172,8 @@ class RawTwitter(Dataset):
             "account is temporarily unavailable because it violates the twitter media policy")]
         self.data.drop(columns='text', inplace=True)
         self.data.rename(columns={'id': 'tweet_id', 'processed_text': 'text'}, inplace=True)
-        self.uniform_format(timestamp_col='created_at')
+        self.uniform_format(timestamp_col='created_at', save_tweet_ids=False)
+        #self.uniform_format(timestamp_col='created_at', save_tweet_ids=True)
 
 
 class Qian2018Dataset(RawTwitter):
@@ -628,6 +632,7 @@ class Twitter_antiracistDataset(Twitter_matchDataset):
     """ Load and process tweets from antiracist accounts to match Twitter data in white supremacy dataset """
 
     def process(self):
+        # TODO: seems like this shouldn't call super Twitter_matchDataset.process, but RawTwitter.process
         """ Sample based on white supremacist yearly counts
             Process data for combining with other datasets in neutral corpus.
         """
